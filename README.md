@@ -26,16 +26,36 @@ The STAC Zarr Convention allows Zarr groups to contain complete STAC Item or Col
 This creates self-describing Zarr stores that can be easily discovered and understood using standard STAC tools,
 including a source of truth for spatial, temporal, and asset metadata.
 
+The convention supports two complementary use cases:
+
+1. **Metadata Sidecar**: Embed STAC metadata alongside data arrays as the authoritative source of truth for individual datasets (`attribute` and `key` encodings).
+
+2. **Catalog Storage**: Store entire STAC catalogs as multidimensional sparse arrays indexed by space and time (`array` encoding).
+
 ## Motivation
 
 Zarr conventions offers an ideal place to embed STAC metadata alongside array data.
-By embedding STAC objects directly in Zarr metadata, we create:
+By embedding STAC objects directly in Zarr metadata, we enable two patterns:
+
+### Metadata Sidecar
+
+For individual datasets and data archives, embedding STAC metadata creates:
 
 1. **Self-Describing Data**: The Zarr store contains all necessary metadata for discovery and description
 2. **Simplified Distribution**: A single Zarr store contains both data and metadata
 3. **Offline Capability**: No external catalog service needed to understand the data
 4. **STAC Compliance**: Full compatibility with STAC tools and validation
 5. **Relative References**: Asset paths are relative to the embedding group, maintaining portability
+
+### Catalog Storage
+
+For large-scale catalogs and federated discovery systems, storing STAC catalogs as arrays enables:
+
+1. **Scalable Storage**: Handle large collections of STAC items through sparse multidimensional arrays
+2. **Spatiotemporal Indexing**: Native space-time dimensions for efficient querying
+3. **Unified Architecture**: Single system for both catalog storage and data access
+4. **Analytical Integration**: Direct compatibility with array-based analysis workflows
+5. **Performance**: Leverage Zarr's optimized multidimensional slicing capabilities
 
 ## Convention Attributes
 
@@ -264,13 +284,7 @@ _If you implement or use this convention, please add your implementation by subm
 
 _If your dataset uses this convention, please add it here by submitting a pull request._
 
-## Acknowledgements
-
-This convention was developed through collaboration with:
-
-- The STAC community
-- Zarr developers and users
-- Earth observation data providers
+## References
 
 Related specifications:
 
