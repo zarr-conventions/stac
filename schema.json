@@ -1,7 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Template Convention",
-  "description": "Schema for Template Zarr convention, supporting both key-prefixed and nested namespace patterns",
+  "$id": "https://raw.githubusercontent.com/zarr-conventions/stac/refs/tags/v1/schema.json",
+  "title": "STAC Zarr Convention",
+  "description": "Schema for STAC Zarr convention - embedding STAC objects in Zarr group metadata with relative asset URLs",
   "type": "object",
   "properties": {
     "zarr_format": {
@@ -10,12 +11,12 @@
     },
     "node_type": {
       "type": "string",
-      "enum": ["array", "group"],
-      "description": "Type of Zarr node"
+      "enum": ["group"],
+      "description": "Type of Zarr node - must be 'group' for STAC convention"
     },
     "attributes": {
       "type": "object",
-      "description": "Zarr attributes containing convention metadata and properties",
+      "description": "Zarr attributes containing convention metadata and STAC objects",
       "properties": {
         "zarr_conventions": {
           "type": "array",
@@ -26,12 +27,9 @@
         }
       },
       "required": ["zarr_conventions"],
-      "oneOf": [
+      "allOf": [
         {
-          "$ref": "#/$defs/keyPrefixedAttributes"
-        },
-        {
-          "$ref": "#/$defs/nestedAttributes"
+          "$ref": "#/$defs/stacAttributes"
         }
       ]
     }
@@ -41,30 +39,31 @@
   "$defs": {
     "conventionMetadata": {
       "type": "object",
-      "description": "Template convention metadata object for use in zarr_conventions array",
+      "description": "STAC convention metadata object for use in zarr_conventions array",
       "properties": {
         "schema_url": {
           "type": "string",
-          "const": "https://raw.githubusercontent.com/zarr-conventions/template/refs/tags/v1/schema.json",
+          "const": "https://raw.githubusercontent.com/zarr-conventions/stac/refs/tags/v1/schema.json",
           "description": "URL to the JSON Schema definition for this convention"
         },
         "spec_url": {
           "type": "string",
-          "const": "https://github.com/zarr-conventions/template/blob/v1/README.md",
+          "const": "https://github.com/zarr-conventions/stac/blob/v1/README.md",
           "description": "URL to the full specification document"
         },
         "uuid": {
           "type": "string",
-          "const": "00000000-0000-0000-0000-000000000000",
+          "const": "b3703368-7e7e-4e8e-9e0e-6d0f0d5e8e8e",
           "description": "UUID that permanently identifies this convention"
         },
         "name": {
           "type": "string",
-          "description": "Human-readable name of the convention. Should be 'template:' for key-prefixed pattern or 'template' for nested pattern"
+          "const": "stac:",
+          "description": "Convention name using key-prefixed pattern"
         },
         "description": {
           "type": "string",
-          "const": "Template convention for demonstrating Zarr convention metadata structure",
+          "const": "STAC convention for embedding STAC objects in Zarr group metadata",
           "description": "Brief description of the convention's purpose and usage"
         }
       },
@@ -81,81 +80,56 @@
       ],
       "additionalProperties": false
     },
-    "conventionProperties": {
+    "stacAttributes": {
       "type": "object",
-      "description": "Template convention properties",
-      "properties": {
-        "new_field": {
-          "type": "string",
-          "description": "REQUIRED. Describe the required field..."
-        },
-        "xyz": {
-          "$ref": "#/$defs/xyzObject"
-        },
-        "another_one": {
-          "type": "array",
-          "description": "Array of numeric values",
-          "items": {
-            "type": "number"
-          }
-        }
-      },
-      "required": ["new_field"],
-      "additionalProperties": false
-    },
-    "xyzObject": {
-      "type": "object",
-      "description": "XYZ Object containing x, y, z coordinates",
-      "properties": {
-        "x": {
-          "type": "number",
-          "description": "REQUIRED. X coordinate value"
-        },
-        "y": {
-          "type": "number",
-          "description": "REQUIRED. Y coordinate value"
-        },
-        "z": {
-          "type": "number",
-          "description": "REQUIRED. Z coordinate value"
-        }
-      },
-      "required": ["x", "y", "z"],
-      "additionalProperties": false
-    },
-    "keyPrefixedAttributes": {
-      "type": "object",
-      "description": "Template convention using key-prefixed pattern (e.g., template:new_field)",
+      "description": "STAC convention attributes using key-prefixed pattern",
       "properties": {
         "zarr_conventions": true,
-        "template:new_field": {
+        "stac:encoding": {
           "type": "string",
-          "description": "REQUIRED. Describe the required field..."
+          "enum": ["json"],
+          "description": "REQUIRED. Encoding type for STAC objects (currently only 'json' is supported)"
+        }
+      },
+      "required": ["stac:encoding"],
+      "oneOf": [
+        {
+          "properties": {
+            "stac:item": {
+              "oneOf": [
+                {
+                  "$ref": "https://schemas.stacspec.org/v1.0.0/item-spec/json-schema/item.json"
+                },
+                {
+                  "$ref": "https://schemas.stacspec.org/v1.1.0/item-spec/json-schema/item.json"
+                }
+              ]
+            }
+          },
+          "required": ["stac:item"],
+          "not": {
+            "required": ["stac:collection"]
+          }
         },
-        "template:xyz": {
-          "$ref": "#/$defs/xyzObject"
-        },
-        "template:another_one": {
-          "type": "array",
-          "description": "Array of numeric values",
-          "items": {
-            "type": "number"
+        {
+          "properties": {
+            "stac:collection": {
+              "oneOf": [
+                {
+                  "$ref": "https://schemas.stacspec.org/v1.0.0/collection-spec/json-schema/collection.json"
+                },
+                {
+                  "$ref": "https://schemas.stacspec.org/v1.1.0/collection-spec/json-schema/collection.json"
+                }
+              ]
+            }
+          },
+          "required": ["stac:collection"],
+          "not": {
+            "required": ["stac:item"]
           }
         }
-      },
-      "required": ["template:new_field"],
-      "additionalProperties": true
-    },
-    "nestedAttributes": {
-      "type": "object",
-      "description": "Template convention using nested pattern (single 'template' key)",
-      "properties": {
-        "zarr_conventions": true,
-        "template": {
-          "$ref": "#/$defs/conventionProperties"
-        }
-      },
-      "required": ["template"],
+      ],
       "additionalProperties": true
     }
   }

@@ -1,137 +1,206 @@
-# Template Convention Metadata
+# STAC Zarr Convention
 
-- **UUID**: 00000000-0000-0000-0000-000000000000
-- **Name**: Template
-- **Schema URL**: "https://raw.githubusercontent.com/zarr-conventions/template/refs/tags/v1/schema.json"
-- **Spec URL**: "https://github.com/zarr-conventions/template/blob/v1/README.md"
-- **Scope**: Array, Group
+- **UUID**: b3703368-7e7e-4e8e-9e0e-6d0f0d5e8e8e
+- **Name**: stac:
+- **Schema URL**: https://raw.githubusercontent.com/zarr-conventions/stac/refs/tags/v1/schema.json
+- **Spec URL**: https://github.com/zarr-conventions/stac/blob/v1/README.md
+- **Scope**: Group
 - **Extension Maturity Classification**: Proposal
-- **Owner**: @your-github-handle, @another-github-handle
+- **Owner**: @zarr-conventions
 
-The document explains the Template convention, which is a Zarr convention metadata. This is the place to add a short introduction.
+This convention defines a standard way to embed complete [STAC](https://stacspec.org/) (SpatioTemporal Asset Catalog) objects (Items or Collections) directly in Zarr group metadata. This enables self-describing Zarr stores where the spatial, temporal, and asset metadata travels with the data itself.
 
-- Examples:
-    - [Convention metadata only](examples/minimal_example.json)
-    - [Key-prefixed pattern (recommended)](examples/key_prefixed_example.json)
-    - [Nested pattern](examples/nested_example.json)
+## Table of Contents
+
+- [Overview](#overview)
+- [Motivation](#motivation)
+- [Convention Attributes](#convention-attributes)
+- [Relative URL Resolution](#relative-url-resolution)
+- [Examples](#examples)
+- [Validation](#validation)
+- [Known Implementations](#known-implementations)
+
+## Overview
+
+The STAC Zarr Convention allows Zarr groups to contain complete STAC Item or Collection objects in their metadata. This creates self-describing Zarr stores that can be easily discovered and understood using standard STAC tools, including a source of truth for spatial, temporal, and asset metadata.
+
+## Motivation
+
+Traditional STAC catalogs maintain metadata separately from data, requiring external catalog services to discover and access datasets. By embedding STAC objects directly in Zarr metadata, we create:
+
+1. **Self-Describing Data**: The Zarr store contains all necessary metadata for discovery and access
+2. **Simplified Distribution**: A single Zarr store contains both data and metadata
+3. **Offline Capability**: No external catalog service needed to understand the data
+4. **STAC Compliance**: Full compatibility with STAC tools and validation
+5. **Relative References**: Asset paths are relative to the embedding group, maintaining portability
 
 ## Convention Attributes
 
-This convention defines attributes that appear at the root level of the Zarr `attributes` object. The convention can be used in these parts of the Zarr hierarchy:
+This convention defines attributes that appear at the group level of the Zarr hierarchy. The convention uses the **key-prefixed pattern** to avoid attribute name collisions with other conventions.
 
-- [x] Group
-- [x] Array
+**Convention metadata name**: `stac:`
 
-### Namespace Patterns
+### Required Fields
 
-To avoid attribute name collisions with other conventions, this convention supports two patterns:
+| Field Name | Type | Description |
+|------------|------|-------------|
+| `stac:encoding` | string | **REQUIRED**. Encoding type for STAC objects. Currently only `"json"` is supported. Future versions may support alternative encodings. |
 
-#### 1. Key-Prefixed Pattern (Recommended)
+### STAC Object Fields (Mutually Exclusive)
 
-Individual attributes are prefixed with `template:`. This is the recommended approach as it enables better composability - other conventions can extend objects defined by this convention.
+A Zarr group **MUST** contain exactly one of the following:
 
-**Convention metadata name**: `template:`
+| Field Name | Type | Description |
+|------------|------|-------------|
+| `stac:item` | [STAC Item](https://github.com/radiantearth/stac-spec/tree/master/item-spec) | A complete STAC Item object conforming to STAC v1.1.0 specification |
+| `stac:collection` | [STAC Collection](https://github.com/radiantearth/stac-spec/tree/master/collection-spec) | A complete STAC Collection object conforming to STAC v1.1.0 specification |
 
-| Field Name           | Type                      | Description                                  |
-| -------------------- | ------------------------- | -------------------------------------------- |
-| template:new_field   | string                    | **REQUIRED**. Describe the required field... |
-| template:xyz         | [XYZ Object](#xyz-object) | Describe the field...                        |
-| template:another_one | \[number]                 | Describe the field...                        |
+### Convention Metadata
 
-**Example**:
+The convention is identified in the `zarr_conventions` array with the following metadata:
+
 ```json
 {
-  "attributes": {
-    "zarr_conventions": [
-      { "name": "template:", "spec_url": "..." }
-    ],
-    "template:new_field": "example value",
-    "template:xyz": { "x": 1.0, "y": 2.0, "z": 3.0 }
-  }
+  "zarr_conventions": [
+    {
+      "name": "stac:",
+      "spec_url": "https://github.com/zarr-conventions/stac/blob/v1/README.md",
+      "schema_url": "https://raw.githubusercontent.com/zarr-conventions/stac/refs/tags/v1/schema.json",
+      "uuid": "b3703368-7e7e-4e8e-9e0e-6d0f0d5e8e8e"
+    }
+  ]
 }
 ```
 
-#### 2. Nested Pattern
+At minimum, one of `spec_url`, `schema_url`, or `uuid` must be present to identify the convention.
 
-All convention properties are nested under a single `template` key.
+## Relative URL Resolution
 
-**Convention metadata name**: `template`
+### Asset Href Resolution
 
-| Field Name           | Type                      | Description                                  |
-| -------------------- | ------------------------- | -------------------------------------------- |
-| template             | [Template Object](#template-object) | **REQUIRED**. Template convention properties |
+All asset `href` values in embedded STAC objects **MUST** be relative to the Zarr group containing the STAC metadata. This ensures:
 
-**Example**:
+- **Portability**: The Zarr store can be moved without breaking references
+- **Scope**: STAC objects can only reference assets within their hierarchy
+- **Simplicity**: Path resolution is straightforward and predictable
+
+#### Resolution Rules
+
+1. Asset `href` paths are resolved relative to the group containing the `stac:item` or `stac:collection` attribute
+2. Paths use forward slashes (`/`) as separators, following POSIX conventions
+3. Paths should not use `..` to reference parent groups (STAC objects should only describe their own hierarchy)
+
+#### Examples
+
+If STAC metadata is embedded at the root group (`/`):
+
 ```json
 {
-  "attributes": {
-    "zarr_conventions": [
-      { "name": "template", "spec_url": "..." }
-    ],
-    "template": {
-      "new_field": "example value",
-      "xyz": { "x": 1.0, "y": 2.0, "z": 3.0 }
+  "assets": {
+    "reflectance": {
+      "href": "measurements/reflectance"  // → /measurements/reflectance
+    },
+    "quality": {
+      "href": "quality/flags"  // → /quality/flags
     }
   }
 }
 ```
 
-### Template Object
+If STAC metadata is embedded in a subgroup (`/products/s2/`):
 
-When using the nested pattern, all properties are contained in the `template` object:
+```json
+{
+  "assets": {
+    "data": {
+      "href": "data/b01"  // → /products/s2/data/b01
+    }
+  }
+}
+```
 
-| Field Name   | Type                      | Description                                  |
-| ------------ | ------------------------- | -------------------------------------------- |
-| new_field    | string                    | **REQUIRED**. Describe the required field... |
-| xyz          | [XYZ Object](#xyz-object) | Describe the field...                        |
-| another_one  | \[number]                 | Describe the field...                        |
+### Store Link Omission
 
-### Additional Field Information
+[The STAC `store` link relationship](https://github.com/radiantearth/stac-best-practices/blob/main/best-practices-zarr.md#store-link-relationship) **MUST** be omitted from embedded STAC objects. Since the STAC object is embedded within the Zarr store itself, a store link would be self-referential and redundant.
 
-#### new_field (template:new_field or template.new_field)
+Other link relationships (e.g., `collection`, `parent`, `self`, `license`) may be included as needed, typically pointing to external resources.
 
-This is a much more detailed description of the field `new_field`...
+## Examples
 
-### XYZ Object
+- [Minimal STAC Item](examples/minimal_item_example.json) - A minimal example showing the required fields
+- [STAC Collection](examples/collection_example.json) - Example of embedding a STAC Collection
+- [Sentinel-2 Scene](examples/sentinel2_item_example.json) - Sentinel-2 L2A data with multiple assets, bands, and extensions
 
-This is the introduction for the purpose and the content of the XYZ Object...
+## Validation
 
-| Field Name | Type   | Description                                  |
-| ---------- | ------ | -------------------------------------------- |
-| x          | number | **REQUIRED**. Describe the required field... |
-| y          | number | **REQUIRED**. Describe the required field... |
-| z          | number | **REQUIRED**. Describe the required field... |
+### Schema Validation
+
+The convention includes a JSON Schema that validates:
+
+1. **Convention Structure**: Ensures proper `zarr_conventions` metadata
+2. **Encoding Field**: Validates the `stac:encoding` value
+3. **Mutual Exclusivity**: Ensures only one of `stac:item` or `stac:collection` is present
+4. **STAC Compliance**: References official STAC schemas for Item and Collection validation
+
+### Validation Tools
+
+You can validate examples using the included validation script:
+
+```bash
+npm install
+npm test
+```
+
+Or validate a specific file:
+
+```bash
+node validate.js examples/minimal_item_example.json
+```
+
+### STAC Validation
+
+Since embedded objects are complete STAC Items or Collections, they can be validated using standard STAC validation tools:
+
+```bash
+# Extract the STAC object from Zarr metadata
+jq '.attributes["stac:item"]' examples/minimal_item_example.json > item.json
+
+# Validate with stac-validator (Python)
+stac-validator item.json
+```
+
+### Asset Organization
+
+Follow [STAC Zarr Best Practices](https://github.com/radiantearth/stac-best-practices/blob/main/best-practices-zarr.md) for:
+
+- Asset hierarchy and organization
+- Band representation patterns
+- Multi-resolution data (multiscales)
+- Variable and dimension metadata
+
+
 
 ## Known Implementations
 
-This section helps potential implementers assess the convention's maturity and adoption, and provides a way for the community to collaborate on future revisions.
+This section helps potential implementers assess the convention's maturity and adoption.
 
 ### Libraries and Tools
 
-- **[Library/Tool Name](https://link-to-repo)** - Brief description of the implementation
-  - Language: Python/JavaScript/Rust/etc.
-  - Status: Experimental/Stable/Production
-  - Maintainer: @github-handle
-  - Since: Version X.Y or Date
-
-- **[Another Implementation](https://link)** - Description
-  - Language: Language
-  - Status: Status
-  - Maintainer: @handle
-  - Since: Version/Date
+*If you implement or use this convention, please add your implementation by submitting a pull request.*
 
 ### Datasets Using This Convention
 
-- **[Dataset Name](https://link-to-dataset)** - Description of the dataset and how it uses this convention
-- **[Another Dataset](https://link)** - Description
-
-### Resources
-
-- Tutorials, blog posts, or other resources demonstrating this convention
-- Community discussions or working groups
-
-*If you implement or use this convention, please add your implementation to this list by submitting a pull request.*
+*If your dataset uses this convention, please add it here by submitting a pull request.*
 
 ## Acknowledgements
 
-This template is based on the [STAC extensions template](https://github.com/stac-extensions/template/blob/main/README.md).
+This convention was developed through collaboration with:
+- The STAC community
+- Zarr developers and users
+- Earth observation data providers
+
+Related specifications:
+- [STAC Specification](https://github.com/radiantearth/stac-spec)
+- [Zarr v3 Specification](https://zarr-specs.readthedocs.io/en/latest/v3/)
+- [STAC Zarr Best Practices](https://github.com/radiantearth/stac-best-practices/blob/main/best-practices-zarr.md)
+- [Zarr Conventions Specification](https://github.com/zarr-conventions/zarr-conventions-spec)

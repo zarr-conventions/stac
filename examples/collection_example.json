@@ -1,0 +1,51 @@
+{
+  "zarr_format": 3,
+  "node_type": "group",
+  "attributes": {
+    "zarr_conventions": [
+      {
+        "schema_url": "https://raw.githubusercontent.com/zarr-conventions/stac/refs/tags/v1/schema.json",
+        "spec_url": "https://github.com/zarr-conventions/stac/blob/v1/README.md",
+        "uuid": "b3703368-7e7e-4e8e-9e0e-6d0f0d5e8e8e",
+        "name": "stac:",
+        "description": "STAC convention for embedding STAC objects in Zarr group metadata"
+      }
+    ],
+    "stac:encoding": "json",
+    "stac:collection": {
+      "type": "Collection",
+      "stac_version": "1.1.0",
+      "id": "example-collection",
+      "title": "Example Collection",
+      "description": "An example STAC Collection embedded in Zarr metadata",
+      "keywords": ["example", "zarr", "stac"],
+      "license": "CC-BY-4.0",
+      "extent": {
+        "spatial": {
+          "bbox": [[-180, -90, 180, 90]]
+        },
+        "temporal": {
+          "interval": [["2024-01-01T00:00:00Z", null]]
+        }
+      },
+      "links": [
+        {
+          "rel": "self",
+          "href": "https://example.com/collection.json"
+        },
+        {
+          "rel": "license",
+          "href": "https://creativecommons.org/licenses/by/4.0/"
+        }
+      ],
+      "assets": {
+        "timeseries": {
+          "href": "data/timeseries",
+          "type": "application/vnd.zarr; version=3",
+          "title": "Time series data",
+          "roles": ["data"]
+        }
+      }
+    }
+  }
+}
