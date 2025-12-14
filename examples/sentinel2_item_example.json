@@ -11,7 +11,7 @@
         "description": "STAC convention for embedding STAC objects in Zarr group metadata"
       }
     ],
-    "stac:encoding": "json",
+    "stac:encoding": "attribute",
     "stac:item": {
       "id": "S2C_MSIL2A_20251128T101401_N0511_R022_T32TQQ_20251128T140816",
       "bbox": [11.499848789004083, 44.099770918209835, 12.936097556086393, 45.12552488296481],

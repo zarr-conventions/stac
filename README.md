@@ -6,7 +6,7 @@
 - **Spec URL**: https://github.com/zarr-conventions/stac/blob/v1/README.md
 - **Scope**: Group
 - **Extension Maturity Classification**: Proposal
-- **Owner**: @zarr-conventions
+- **Owner**: @emmanuelmathot
 
 This convention defines a standard way to embed complete [STAC](https://stacspec.org/) (SpatioTemporal Asset Catalog) objects (Items or Collections) directly in Zarr group metadata. This enables self-describing Zarr stores where the spatial, temporal, and asset metadata travels with the data itself.
 
@@ -22,13 +22,16 @@ This convention defines a standard way to embed complete [STAC](https://stacspec
 
 ## Overview
 
-The STAC Zarr Convention allows Zarr groups to contain complete STAC Item or Collection objects in their metadata. This creates self-describing Zarr stores that can be easily discovered and understood using standard STAC tools, including a source of truth for spatial, temporal, and asset metadata.
+The STAC Zarr Convention allows Zarr groups to contain complete STAC Item or Collection objects in their store.
+This creates self-describing Zarr stores that can be easily discovered and understood using standard STAC tools,
+including a source of truth for spatial, temporal, and asset metadata.
 
 ## Motivation
 
-Traditional STAC catalogs maintain metadata separately from data, requiring external catalog services to discover and access datasets. By embedding STAC objects directly in Zarr metadata, we create:
+Zarr conventions offers an ideal place to embed STAC metadata alongside array data.
+By embedding STAC objects directly in Zarr metadata, we create:
 
-1. **Self-Describing Data**: The Zarr store contains all necessary metadata for discovery and access
+1. **Self-Describing Data**: The Zarr store contains all necessary metadata for discovery and description
 2. **Simplified Distribution**: A single Zarr store contains both data and metadata
 3. **Offline Capability**: No external catalog service needed to understand the data
 4. **STAC Compliance**: Full compatibility with STAC tools and validation
@@ -36,24 +39,28 @@ Traditional STAC catalogs maintain metadata separately from data, requiring exte
 
 ## Convention Attributes
 
-This convention defines attributes that appear at the group level of the Zarr hierarchy. The convention uses the **key-prefixed pattern** to avoid attribute name collisions with other conventions.
+This convention defines attributes that appear at the group level of the Zarr hierarchy.
+The convention uses the **key-prefixed pattern** to avoid attribute name collisions with other conventions.
 
 **Convention metadata name**: `stac:`
 
-### Required Fields
+### Fields
 
-| Field Name | Type | Description |
-|------------|------|-------------|
-| `stac:encoding` | string | **REQUIRED**. Encoding type for STAC objects. Currently only `"json"` is supported. Future versions may support alternative encodings. |
+| Field Name        | Type                                                                                     | Description                                          |
+| ----------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| `stac:encoding`   | string                                                                                   | **REQUIRED**. Encoding type for STAC objects.        |
+| `stac:item`       | [STAC Item](https://github.com/radiantearth/stac-spec/tree/master/item-spec)             | A STAC Item JSON object or a reference to one.       |
+| `stac:collection` | [STAC Collection](https://github.com/radiantearth/stac-spec/tree/master/collection-spec) | A STAC Collection JSON object or a reference to one. |
 
-### STAC Object Fields (Mutually Exclusive)
+### Field Details
 
-A Zarr group **MUST** contain exactly one of the following:
+#### `stac:encoding`
 
-| Field Name | Type | Description |
-|------------|------|-------------|
-| `stac:item` | [STAC Item](https://github.com/radiantearth/stac-spec/tree/master/item-spec) | A complete STAC Item object conforming to STAC v1.1.0 specification |
-| `stac:collection` | [STAC Collection](https://github.com/radiantearth/stac-spec/tree/master/collection-spec) | A complete STAC Collection object conforming to STAC v1.1.0 specification |
+Specifies how the STAC object is encoded in the Zarr store. Valid values are:
+
+- `attribute`: The STAC object is embedded directly as a JSON object in the Zarr group attributes under `stac:item` or `stac:collection`.
+- `key` : The STAC object is stored as a separate JSON value within the Zarr store, referenced by a key in the Zarr group under `stac:item` or `stac:collection`.
+- `array`: The STAC object is stored as a data array within the Zarr store, referenced by a relative path to the array node in the Zarr group under `stac:item` or `stac:collection`. Section [Encoding as Data Array](#encoding-as-data-array) provides more details.
 
 ### Convention Metadata
 
@@ -74,7 +81,7 @@ The convention is identified in the `zarr_conventions` array with the following 
 
 At minimum, one of `spec_url`, `schema_url`, or `uuid` must be present to identify the convention.
 
-## Relative URL Resolution
+## STAC URL Resolution
 
 ### Asset Href Resolution
 
@@ -90,7 +97,7 @@ All asset `href` values in embedded STAC objects **MUST** be relative to the Zar
 2. Paths use forward slashes (`/`) as separators, following POSIX conventions
 3. Paths should not use `..` to reference parent groups (STAC objects should only describe their own hierarchy)
 
-#### Examples
+#### Asset Examples
 
 If STAC metadata is embedded at the root group (`/`):
 
@@ -98,10 +105,10 @@ If STAC metadata is embedded at the root group (`/`):
 {
   "assets": {
     "reflectance": {
-      "href": "measurements/reflectance"  // → /measurements/reflectance
+      "href": "measurements/reflectance" // → /measurements/reflectance
     },
     "quality": {
-      "href": "quality/flags"  // → /quality/flags
+      "href": "quality/flags" // → /quality/flags
     }
   }
 }
@@ -113,7 +120,7 @@ If STAC metadata is embedded in a subgroup (`/products/s2/`):
 {
   "assets": {
     "data": {
-      "href": "data/b01"  // → /products/s2/data/b01
+      "href": "data/b01" // → /products/s2/data/b01
     }
   }
 }
@@ -124,6 +131,18 @@ If STAC metadata is embedded in a subgroup (`/products/s2/`):
 [The STAC `store` link relationship](https://github.com/radiantearth/stac-best-practices/blob/main/best-practices-zarr.md#store-link-relationship) **MUST** be omitted from embedded STAC objects. Since the STAC object is embedded within the Zarr store itself, a store link would be self-referential and redundant.
 
 Other link relationships (e.g., `collection`, `parent`, `self`, `license`) may be included as needed, typically pointing to external resources.
+
+## Encoding as Data Array
+
+When using `stac:encoding` value of `array`, the STAC object is stored as a data array within the Zarr store.
+This encoding allows to store a large set of STAC objects efficiently like an entire collection of items.
+There is no real value in storing a single STAC object as a data array, but it is supported for completeness.
+With this encoding, the `stac:item` or `stac:collection` attribute contains a relative path to the array node.
+
+### STAC Array Structure
+
+*TBD*
+
 
 ## Examples
 
@@ -178,28 +197,28 @@ Follow [STAC Zarr Best Practices](https://github.com/radiantearth/stac-best-prac
 - Multi-resolution data (multiscales)
 - Variable and dimension metadata
 
-
-
 ## Known Implementations
 
 This section helps potential implementers assess the convention's maturity and adoption.
 
 ### Libraries and Tools
 
-*If you implement or use this convention, please add your implementation by submitting a pull request.*
+_If you implement or use this convention, please add your implementation by submitting a pull request._
 
 ### Datasets Using This Convention
 
-*If your dataset uses this convention, please add it here by submitting a pull request.*
+_If your dataset uses this convention, please add it here by submitting a pull request._
 
 ## Acknowledgements
 
 This convention was developed through collaboration with:
+
 - The STAC community
 - Zarr developers and users
 - Earth observation data providers
 
 Related specifications:
+
 - [STAC Specification](https://github.com/radiantearth/stac-spec)
 - [Zarr v3 Specification](https://zarr-specs.readthedocs.io/en/latest/v3/)
 - [STAC Zarr Best Practices](https://github.com/radiantearth/stac-best-practices/blob/main/best-practices-zarr.md)

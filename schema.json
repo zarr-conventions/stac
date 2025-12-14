@@ -87,11 +87,29 @@
         "zarr_conventions": true,
         "stac:encoding": {
           "type": "string",
-          "enum": ["json"],
-          "description": "REQUIRED. Encoding type for STAC objects (currently only 'json' is supported)"
+          "enum": ["attribute", "key"],
+          "description": "REQUIRED. Encoding type for STAC objects. 'attribute' embeds the object in attributes, 'key' references a key in the store containing the JSON object."
         }
       },
       "required": ["stac:encoding"],
+      "oneOf": [
+        {
+          "$ref": "#/$defs/jsonAttrsEncoding"
+        },
+        {
+          "$ref": "#/$defs/jsonKeyEncoding"
+        }
+      ],
+      "additionalProperties": true
+    },
+    "jsonAttrsEncoding": {
+      "type": "object",
+      "description": "STAC object embedded directly in attributes",
+      "properties": {
+        "stac:encoding": {
+          "const": "attribute"
+        }
+      },
       "oneOf": [
         {
           "properties": {
@@ -108,7 +126,10 @@
           },
           "required": ["stac:item"],
           "not": {
-            "required": ["stac:collection"]
+            "anyOf": [
+              { "required": ["stac:collection"] },
+              { "required": ["stac:key"] }
+            ]
           }
         },
         {
@@ -126,11 +147,33 @@
           },
           "required": ["stac:collection"],
           "not": {
-            "required": ["stac:item"]
+            "anyOf": [
+              { "required": ["stac:item"] },
+              { "required": ["stac:key"] }
+            ]
           }
         }
-      ],
-      "additionalProperties": true
+      ]
+    },
+    "jsonKeyEncoding": {
+      "type": "object",
+      "description": "STAC object stored as a separate value in the Zarr store, referenced by a key",
+      "properties": {
+        "stac:encoding": {
+          "const": "key"
+        },
+        "stac:key": {
+          "type": "string",
+          "description": "REQUIRED for key encoding. The key (Unicode string) that references the STAC JSON object in the Zarr store, following the abstract store interface. Relative to the group containing this metadata."
+        }
+      },
+      "required": ["stac:key"],
+      "not": {
+        "anyOf": [
+          { "required": ["stac:item"] },
+          { "required": ["stac:collection"] }
+        ]
+      }
     }
   }
 }

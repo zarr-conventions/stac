@@ -11,7 +11,7 @@
         "description": "STAC convention for embedding STAC objects in Zarr group metadata"
       }
     ],
-    "stac:encoding": "json",
+    "stac:encoding": "attribute",
     "stac:collection": {
       "type": "Collection",
       "stac_version": "1.1.0",
