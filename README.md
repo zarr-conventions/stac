@@ -60,7 +60,7 @@ Specifies how the STAC object is encoded in the Zarr store. Valid values are:
 
 - `attribute`: The STAC object is embedded directly as a JSON object in the Zarr group attributes under `stac:item` or `stac:collection`.
 - `key` : The STAC object is stored as a separate JSON value within the Zarr store, referenced by a key in the Zarr group under `stac:item` or `stac:collection`.
-- `array`: The STAC object is stored as a data array within the Zarr store, referenced by a relative path to the array node in the Zarr group under `stac:item` or `stac:collection`. Section [Encoding as Data Array](#encoding-as-data-array) provides more details.
+- `array`: **[UNDER DEVELOPMENT]** The STAC object is stored as a data array within the Zarr store, referenced by a relative path to the array node in the Zarr group under `stac:item` or `stac:collection`. Section [Encoding as Data Array](#encoding-as-data-array) provides more details.
 
 ### Convention Metadata
 
@@ -134,15 +134,70 @@ Other link relationships (e.g., `collection`, `parent`, `self`, `license`) may b
 
 ## Encoding as Data Array
 
-When using `stac:encoding` value of `array`, the STAC object is stored as a data array within the Zarr store.
+When using `stac:encoding` value of `array`, the STAC objects are stored in data array(s) within the Zarr store.
 This encoding allows to store a large set of STAC objects efficiently like an entire collection of items.
 There is no real value in storing a single STAC object as a data array, but it is supported for completeness.
 With this encoding, the `stac:item` or `stac:collection` attribute contains a relative path to the array node.
 
 ### STAC Array Structure
 
-*TBD*
+*This section is under development and opens for community feedback.*
+The array encoding leverages Zarr's multidimensional array capabilities to store STAC metadata as **[sparse arrays](https://github.com/zarr-developers/zarr-specs/issues/245) with labeled space-time dimensions**. 
+This approach aligns naturally with core STAC metadata, and provides several key benefits:
 
+- **Scalability**: Supports millions of STAC items through chunked storage and spatial indexing
+- **Natural Indexing**: Space-time dimensions provide native spatial and temporal query capabilities  
+- **Consistency**: Single source of truth for both data and metadata within the same Zarr store
+- **Performance**: Efficient multidimensional slicing for spatial and temporal queries
+
+#### Dimensional Structure
+
+STAC metadata is organized as a sparse multidimensional array with the following dimensions:
+
+- **Time dimension**: Indexed by STAC Item `datetime` (or time range for multi-temporal items)
+- **Spatial dimensions**: Indexed by spatial coordinates in any CRS (lat/lon, UTM, etc.)
+- **Cell content**: Each non-empty cell contains the complete STAC Item metadata as structured data
+
+#### Coordinate Systems and Indexing
+
+**Temporal Coordinate**
+
+- Primary temporal index using STAC Item `datetime` 
+- Can use any time resolution (milliseconds to years) depending on data density
+- Supports labeled dimensions for non-uniform time intervals
+
+**Spatial Coordinates**
+
+- Flexible spatial reference system (any CRS supported)
+- Could use geographic coordinates (lat/lon) for global collections
+- Could use projected coordinates (UTM, etc.) for regional collections  
+- Could use grid references (MGRS, tile indices) for regular grids
+- Supports labeled dimensions for irregular spatial sampling
+
+#### Example Structure
+
+For a Sentinel-2 collection organized by MGRS tiles:
+
+```
+/stac_items/
+├── zarr.json          # Array metadata defining dimensions and coordinates
+├── datetime/          # Temporal coordinate array (1D)
+├── mgrs_tile/         # Spatial coordinate array (1D) 
+├── geometry/          # Geometry data per item (2D: time × space)
+├── assets/            # Asset references per item (2D: time × space) 
+├── properties/        # Flattened properties per item (2D: time × space)
+└── links/             # Flattened links per item (2D: time × space)
+```
+
+**Coordinate Arrays:**
+
+- `datetime`: `["2024-01-01T10:30:00Z", "2024-01-02T10:30:00Z", ...]`
+- `mgrs_tile`: `["32TQQ", "32TQR", "32TQL", ...]` 
+
+**Data Arrays:**
+
+- `metadata`: 2D sparse array where `metadata[t, s]` contains the STAC Item at time `t` and location `s`
+- Most cells are empty (sparse), but where data exists, it contains complete STAC metadata
 
 ## Examples
 
