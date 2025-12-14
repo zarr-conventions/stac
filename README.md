@@ -278,3 +278,4 @@ Related specifications:
 - [Zarr v3 Specification](https://zarr-specs.readthedocs.io/en/latest/v3/)
 - [STAC Zarr Best Practices](https://github.com/radiantearth/stac-best-practices/blob/main/best-practices-zarr.md)
 - [Zarr Conventions Specification](https://github.com/zarr-conventions/zarr-conventions-spec)
+- [Why Arrays as a universal data model](https://www.tiledb.com/blog/why-arrays-as-a-universal-data-model)
