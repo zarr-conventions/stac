@@ -1,8 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://raw.githubusercontent.com/zarr-conventions/stac/refs/tags/v1/schema.json",
+  "$id": "https://raw.githubusercontent.com/zarr-conventions/stac/refs/tags/v0.1/schema.json",
   "title": "STAC Zarr Convention",
-  "description": "Schema for STAC Zarr convention - embedding STAC objects in Zarr group metadata with relative asset URLs",
+  "description": "Schema for STAC Zarr convention - embedding or referencing STAC objects in Zarr group metadata with relative asset URLs",
   "type": "object",
   "properties": {
     "zarr_format": {
@@ -43,12 +43,12 @@
       "properties": {
         "schema_url": {
           "type": "string",
-          "const": "https://raw.githubusercontent.com/zarr-conventions/stac/refs/tags/v1/schema.json",
+          "const": "https://raw.githubusercontent.com/zarr-conventions/stac/refs/tags/v0.1/schema.json",
           "description": "URL to the JSON Schema definition for this convention"
         },
         "spec_url": {
           "type": "string",
-          "const": "https://github.com/zarr-conventions/stac/blob/v1/README.md",
+          "const": "https://github.com/zarr-conventions/stac/blob/v0.1/README.md",
           "description": "URL to the full specification document"
         },
         "uuid": {
@@ -63,7 +63,7 @@
         },
         "description": {
           "type": "string",
-          "const": "STAC convention for embedding STAC objects in Zarr group metadata",
+          "const": "STAC convention for embedding or referencing STAC objects in Zarr group metadata",
           "description": "Brief description of the convention's purpose and usage"
         }
       },
@@ -87,8 +87,8 @@
         "zarr_conventions": true,
         "stac:encoding": {
           "type": "string",
-          "enum": ["attribute", "key"],
-          "description": "REQUIRED. Encoding type for STAC objects. 'attribute' embeds the object in attributes, 'key' references a key in the store containing the JSON object."
+          "enum": ["attribute", "link"],
+          "description": "REQUIRED. Encoding type for STAC objects. 'attribute' embeds the object directly in attributes. 'link' points to the canonical STAC object at an external location via a STAC Link Object. The experimental 'array' encoding (see README) is not yet covered by this schema."
         }
       },
       "required": ["stac:encoding"],
@@ -97,14 +97,14 @@
           "$ref": "#/$defs/jsonAttrsEncoding"
         },
         {
-          "$ref": "#/$defs/jsonKeyEncoding"
+          "$ref": "#/$defs/linkEncoding"
         }
       ],
       "additionalProperties": true
     },
     "jsonAttrsEncoding": {
       "type": "object",
-      "description": "STAC object embedded directly in attributes",
+      "description": "STAC object embedded directly in attributes. This is the authoritative source of truth for the assets it lists.",
       "properties": {
         "stac:encoding": {
           "const": "attribute"
@@ -126,10 +126,7 @@
           },
           "required": ["stac:item"],
           "not": {
-            "anyOf": [
-              { "required": ["stac:collection"] },
-              { "required": ["stac:key"] }
-            ]
+            "required": ["stac:collection"]
           }
         },
         {
@@ -147,33 +144,64 @@
           },
           "required": ["stac:collection"],
           "not": {
-            "anyOf": [
-              { "required": ["stac:item"] },
-              { "required": ["stac:key"] }
-            ]
+            "required": ["stac:item"]
           }
         }
       ]
     },
-    "jsonKeyEncoding": {
+    "linkEncoding": {
       "type": "object",
-      "description": "STAC object stored as a separate value in the Zarr store, referenced by a key",
+      "description": "The STAC object is not embedded. Instead, a STAC Link Object points to the canonical STAC Item or Collection describing this Zarr node, hosted elsewhere (e.g. a STAC API).",
       "properties": {
         "stac:encoding": {
-          "const": "key"
-        },
-        "stac:key": {
-          "type": "string",
-          "description": "REQUIRED for key encoding. The key (Unicode string) that references the STAC JSON object in the Zarr store, following the abstract store interface. Relative to the group containing this metadata."
+          "const": "link"
         }
       },
-      "required": ["stac:key"],
-      "not": {
-        "anyOf": [
-          { "required": ["stac:item"] },
-          { "required": ["stac:collection"] }
-        ]
-      }
+      "oneOf": [
+        {
+          "properties": {
+            "stac:item": {
+              "$ref": "#/$defs/stacLink"
+            }
+          },
+          "required": ["stac:item"],
+          "not": {
+            "required": ["stac:collection"]
+          }
+        },
+        {
+          "properties": {
+            "stac:collection": {
+              "$ref": "#/$defs/stacLink"
+            }
+          },
+          "required": ["stac:collection"],
+          "not": {
+            "required": ["stac:item"]
+          }
+        }
+      ]
+    },
+    "stacLink": {
+      "type": "object",
+      "description": "A STAC Link Object identifying the canonical, external location of a STAC Item or Collection.",
+      "properties": {
+        "href": {
+          "type": "string",
+          "format": "uri",
+          "description": "REQUIRED. Absolute URL to the canonical STAC Item or Collection. MUST NOT be relative to the Zarr store, since the target lives outside it."
+        },
+        "rel": {
+          "type": "string",
+          "description": "Link relation type. Defaults to 'self' when omitted."
+        },
+        "type": {
+          "type": "string",
+          "description": "Media type of the target, e.g. 'application/geo+json' for an Item or 'application/json' for a Collection."
+        }
+      },
+      "required": ["href"],
+      "additionalProperties": true
     }
   }
 }
