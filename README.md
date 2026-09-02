@@ -48,7 +48,7 @@ For individual datasets, attaching STAC metadata this way gives:
 2. **Simplified Distribution**: one Zarr store carries both data and metadata.
 3. **Offline Capability**: no external catalog service is needed to understand the data.
 4. **STAC Compliance**: the embedded object is a real STAC Item or Collection, so standard STAC tools and validators work on it directly.
-5. **Producer Choice**: `stac:item`/`stac:collection` embed the object for full offline use; `stac:key` keeps it out of the attributes while staying inside the same store, for producers serving a static catalog from a plain object store; `stac:link` keeps the Zarr store small and defers to a catalog that is already the source of truth (see [Issue #1](https://github.com/zarr-conventions/stac/issues/1)).
+5. **Producer Choice**: three ways to attach the metadata, picked by the producer to fit how the store is written and served. See [Choosing a Field](#choosing-a-field).
 
 ### Why Collection Array Storage (experimental)
 
@@ -70,14 +70,16 @@ The convention uses the **key-prefixed pattern** to avoid attribute name collisi
 
 ### Fields
 
-Exactly one of the following four fields MUST be present. There is no separate mode or encoding field: each field has exactly one shape, and which field is present is itself the signal for how to interpret it. A fifth field, the experimental `stac:array`, is described in [Collection Array Storage](#collection-array-storage-experimental); it is not part of this rule and is not accepted by the current JSON Schema.
+Each field has exactly one shape, and which field is present is itself the signal for how to interpret it: there is no separate mode or encoding field. A fifth field, the experimental `stac:array`, is described in [Collection Array Storage](#collection-array-storage-experimental); it is not part of the rule below and is not accepted by the current JSON Schema.
 
-| Field Name | Type | Description | Reference |
-|---|---|---|---|
-| `stac:item` | [STAC Item](https://github.com/radiantearth/stac-spec/tree/master/item-spec) | A complete, embedded STAC Item. | [stac:item / stac:collection](#stacitem-and-staccollection) |
-| `stac:collection` | [STAC Collection](https://github.com/radiantearth/stac-spec/tree/master/collection-spec) | A complete, embedded STAC Collection. | [stac:item / stac:collection](#stacitem-and-staccollection) |
-| `stac:key` | string | A store-relative key referencing a separate JSON value holding the STAC object. | [stac:key](#stackey) |
-| `stac:link` | [Link Object](#staclink) | A pointer to the canonical STAC object at an external location. | [stac:link](#staclink) |
+| Field Name | Type | Description | Required | Reference |
+|---|---|---|---|---|
+| `stac:item` | [STAC Item](https://github.com/radiantearth/stac-spec/tree/master/item-spec) | A complete, embedded STAC Item. | Conditional* | [stac:item / stac:collection](#stacitem-and-staccollection) |
+| `stac:collection` | [STAC Collection](https://github.com/radiantearth/stac-spec/tree/master/collection-spec) | A complete, embedded STAC Collection. | Conditional* | [stac:item / stac:collection](#stacitem-and-staccollection) |
+| `stac:key` | string | A store-relative key referencing a separate JSON value holding the STAC object. | Conditional* | [stac:key](#stackey) |
+| `stac:link` | [Link Object](#staclink) | A pointer to the canonical STAC object at an external location. | Conditional* | [stac:link](#staclink) |
+
+\* Exactly one of `stac:item`, `stac:collection`, `stac:key`, or `stac:link` MUST be present.
 
 ### Choosing a Field
 
