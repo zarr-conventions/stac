@@ -83,11 +83,10 @@ Exactly one of the following four fields MUST be present. There is no separate m
 
 All four fields are stable and equally supported. This convention does not prescribe one as "the" correct way to attach STAC metadata — which to use is a producer decision based on deployment constraints:
 
-- **`stac:item` / `stac:collection`** — embed the object directly. Maximum portability: the metadata travels with the store through any tool, including ones that virtualize or move Zarr stores (Icechunk, VirtualiZarr). Cost: the object is duplicated into attributes and must be kept in sync if the data changes.
-- **`stac:key`** — reference a separate JSON value in the same store. Lets a producer serve a static, file-based catalog (e.g. a `stac.json` next to `zarr.json`) straight from a plain object store over plain HTTP, no query engine required. Cost: tooling that virtualizes or moves a Zarr store by walking only `zarr.json` and chunk keys (Icechunk, VirtualiZarr) doesn't know a referenced key exists, so such an operation can leave it behind. Producers whose deployment goes through that kind of tooling should weigh this; producers serving directly from an object store typically don't hit it.
-- **`stac:link`** — point at an external canonical STAC object, typically a STAC API. Keeps the Zarr store minimal and defers to a catalog that's already the source of truth. Cost: resolving it needs network access; nothing is available offline.
+- **`stac:item` / `stac:collection`** embed the object directly. Maximum portability: the metadata travels with the store through any tool, including ones that virtualize or move Zarr stores (Icechunk, VirtualiZarr).
+- **`stac:key`** references a separate JSON value in the same store. Lets a producer serve a static, file-based catalog (e.g. a `stac.json` next to `zarr.json`) straight from a plain object store over plain HTTP, no query engine required. Tooling that virtualizes or moves a Zarr store by walking only `zarr.json` and chunk keys (Icechunk, VirtualiZarr) doesn't know a referenced key exists, so such an operation can leave it behind.
+- **`stac:link`** points at an external canonical STAC object, typically a STAC API. Keeps the Zarr store minimal and defers to a catalog that's already the source of truth. Resolving it needs network access.
 
-None of these is more correct than the others — each is a real, fully-specified way to satisfy this convention. [Issue #2](https://github.com/zarr-conventions/stac/issues/2) asked whether `stac:key` should be removed; the answer is no. It stays on equal footing with the other three, because the trade-off above is a legitimate deployment decision for a producer to make, not a defect in the field itself.
 
 ### `stac:item` and `stac:collection`
 
