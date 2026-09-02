@@ -33,8 +33,7 @@ The STAC Zarr Convention supports two patterns:
 
 ## Status
 
-- **`stac:item`, `stac:collection`, and `stac:link`** are stable enough to build on. They have a JSON Schema, validated examples, and a settled, single-shape attribute model.
-- **`stac:key`** is covered by the JSON Schema and usable today, but its long-term shape is an open design question — see [Issue #2](https://github.com/zarr-conventions/stac/issues/2) and [Issue #4](https://github.com/zarr-conventions/stac/issues/4), both open. In short: Zarr v3 tooling that virtualizes or moves stores (Icechunk, VirtualiZarr) doesn't expect keys outside `zarr.json` and chunk data, so a `stac:key` reference may not survive every kind of store operation. Producers who need that portability guarantee today should prefer `stac:item`/`stac:collection` or `stac:link`; `stac:key` remains here for producers serving a plain object store as a static catalog, where that trade-off is acceptable.
+- **`stac:item`, `stac:collection`, `stac:key`, and `stac:link`** are stable enough to build on. They have a JSON Schema, validated examples, and a settled, single-shape attribute model. This convention deliberately does not pick one as "the" way to attach STAC metadata — see [Choosing a Field](#choosing-a-field) for the trade-offs and why that choice is left to producers.
 - **`stac:array`** is an early-stage experiment. It has no JSON Schema, no validated examples, and its on-disk layout is still open for discussion. Do not build production tooling against it yet. Read [Collection Array Storage](#collection-array-storage-experimental) for the current thinking, and use the issue tracker to weigh in before it stabilizes.
 
 ## Motivation
@@ -80,6 +79,16 @@ Exactly one of the following four fields MUST be present. There is no separate m
 | `stac:key` | string | A store-relative key referencing a separate JSON value holding the STAC object. | [stac:key](#stackey) |
 | `stac:link` | [Link Object](#staclink) | A pointer to the canonical STAC object at an external location. | [stac:link](#staclink) |
 
+### Choosing a Field
+
+All four fields are stable and equally supported. This convention does not prescribe one as "the" correct way to attach STAC metadata — which to use is a producer decision based on deployment constraints:
+
+- **`stac:item` / `stac:collection`** — embed the object directly. Maximum portability: the metadata travels with the store through any tool, including ones that virtualize or move Zarr stores (Icechunk, VirtualiZarr). Cost: the object is duplicated into attributes and must be kept in sync if the data changes.
+- **`stac:key`** — reference a separate JSON value in the same store. Lets a producer serve a static, file-based catalog (e.g. a `stac.json` next to `zarr.json`) straight from a plain object store over plain HTTP, no query engine required. Cost: tooling that virtualizes or moves a Zarr store by walking only `zarr.json` and chunk keys (Icechunk, VirtualiZarr) doesn't know a referenced key exists, so such an operation can leave it behind. Producers whose deployment goes through that kind of tooling should weigh this; producers serving directly from an object store typically don't hit it.
+- **`stac:link`** — point at an external canonical STAC object, typically a STAC API. Keeps the Zarr store minimal and defers to a catalog that's already the source of truth. Cost: resolving it needs network access; nothing is available offline.
+
+None of these is more correct than the others — each is a real, fully-specified way to satisfy this convention. [Issue #2](https://github.com/zarr-conventions/stac/issues/2) asked whether `stac:key` should be removed; the answer is no. It stays on equal footing with the other three, because the trade-off above is a legitimate deployment decision for a producer to make, not a defect in the field itself.
+
 ### `stac:item` and `stac:collection`
 
 Each holds a complete, valid STAC object, embedded directly as JSON in the Zarr group attributes — never a path, a key, or a link. This is the authoritative source of truth for every asset it lists — see [Scope of the Embedded STAC Object](#scope-of-the-embedded-stac-object).
@@ -94,9 +103,7 @@ Each holds a complete, valid STAC object, embedded directly as JSON in the Zarr 
 
 ### `stac:key`
 
-**Design open — see [Issue #2](https://github.com/zarr-conventions/stac/issues/2) and [Issue #4](https://github.com/zarr-conventions/stac/issues/4).**
-
-A key (a Unicode string, relative to the group carrying this attribute) referencing a separate JSON value elsewhere in the same Zarr store that holds the STAC object. This is how a producer serves a static, file-based STAC catalog (e.g. a `stac.json` next to `zarr.json`) alongside the data, without duplicating the object into attributes. It trades away one guarantee to get that: Zarr v3 tooling that virtualizes or moves stores (Icechunk, VirtualiZarr) doesn't expect keys outside `zarr.json` and chunk data, so a `stac:key` reference may not survive every kind of store operation. See [Status](#status).
+A key (a Unicode string, relative to the group carrying this attribute) referencing a separate JSON value elsewhere in the same Zarr store that holds the STAC object. This is how a producer serves a static, file-based STAC catalog (e.g. a `stac.json` next to `zarr.json`) alongside the data, without duplicating the object into attributes. See [Choosing a Field](#choosing-a-field) for the trade-off against `stac:item`/`stac:collection` and `stac:link`.
 
 `stac:key` doesn't say whether the referenced document is an Item or a Collection — read the document's own `type` field to find out.
 
@@ -108,7 +115,7 @@ A key (a Unicode string, relative to the group carrying this attribute) referenc
 }
 ```
 
-`stac:key` is not the same as `stac:link`: `stac:key` stays inside the current Zarr store (the referenced JSON is another value in the same abstract store, addressed by a store-relative key); `stac:link` leaves the store entirely (an absolute URL to wherever the object is actually served). Which one a producer should reach for is exactly the open question in [Issue #2](https://github.com/zarr-conventions/stac/issues/2) and [Issue #4](https://github.com/zarr-conventions/stac/issues/4).
+`stac:key` is not the same as `stac:link`: `stac:key` stays inside the current Zarr store (the referenced JSON is another value in the same abstract store, addressed by a store-relative key); `stac:link` leaves the store entirely (an absolute URL to wherever the object is actually served).
 
 ### `stac:link`
 
@@ -180,7 +187,7 @@ A group that only meets some of these — for example, one asset per array with 
 
 ### Asset Href Resolution
 
-This section applies to `stac:item` and `stac:collection` only. Under `stac:link`, the referenced object's own hrefs are resolved by whatever store it actually lives in — this convention has no say over them. Under `stac:key`, how asset hrefs in the keyed document resolve is not yet specified — it's part of the open discussion in [Issue #2](https://github.com/zarr-conventions/stac/issues/2) and [Issue #4](https://github.com/zarr-conventions/stac/issues/4).
+This section applies to `stac:item`, `stac:collection`, and the document referenced by `stac:key` — for all three, the STAC object lives inside the same Zarr store as the attribute that points to it. Under `stac:link`, the referenced object's own hrefs are resolved by whatever store it actually lives in — this convention has no say over them.
 
 All asset `href` values in an embedded STAC object **MUST** be relative to the Zarr group containing the STAC metadata. This ensures:
 
@@ -190,7 +197,7 @@ All asset `href` values in an embedded STAC object **MUST** be relative to the Z
 
 #### Resolution Rules
 
-1. Asset `href` paths are resolved relative to the group containing the `stac:item` or `stac:collection` attribute.
+1. Asset `href` paths are resolved relative to the group containing the `stac:item`, `stac:collection`, or `stac:key` attribute — not relative to the keyed document's own location, in the `stac:key` case.
 2. Paths use forward slashes (`/`) as separators, following POSIX conventions.
 3. Paths should not use `..` to reference parent groups. A STAC object should only describe its own hierarchy.
 

@@ -109,7 +109,7 @@
         },
         "stac:key": {
           "type": "string",
-          "description": "A key (Unicode string), relative to the group carrying this attribute, referencing a separate JSON value elsewhere in the same Zarr store that holds the STAC object. Design open — see README Status and Issues #2 and #4."
+          "description": "A key (Unicode string), relative to the group carrying this attribute, referencing a separate JSON value elsewhere in the same Zarr store that holds the STAC object. See README 'Choosing a Field' for when to prefer this over stac:item/stac:collection or stac:link."
         },
         "stac:link": {
           "$ref": "#/$defs/stacLink"
