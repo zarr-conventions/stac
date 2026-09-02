@@ -160,9 +160,9 @@ This section applies to the `attribute` encoding, where the Zarr group carries t
 
 **The embedded object MUST be a complete, valid STAC Item or Collection under `attribute` encoding.** It is authoritative for every asset it lists. In particular:
 
-1. **Assets describe publishable entities, not internal storage nodes.** An asset SHOULD correspond to one logical variable or measurement group — the thing a downstream catalog would also expose as one asset — not to every array or intermediate group in the store's hierarchy. A reflectance cube with twelve bands at three resolutions is one asset (`reflectance`, pointing at the multiscale group, with `bands` and `cube:dimensions` describing the internals), not twelve-times-three assets. [`examples/sentinel2_item_example.json`](examples/sentinel2_item_example.json) shows this pattern: `reflectance`, `AOT_10m`, and `SCL_20m` are three assets, each with a `title`, `type`, `roles`, and enough STAC extension metadata (`raster:`, `proj:`, `cube:`) for a client to use the asset directly. An asset with only `href` and `title` fails this requirement — it is a node index, not a STAC asset.
+1. **Assets follow [STAC Zarr Best Practices' Asset Organization rules](https://github.com/radiantearth/stac-best-practices/blob/main/best-practices-zarr.md#asset-organization) and [Bands Representation](https://github.com/radiantearth/stac-best-practices/blob/main/best-practices-zarr.md#bands-representation) patterns**, which this convention treats as binding for `attribute` encoding rather than restating. [`examples/sentinel2_item_example.json`](examples/sentinel2_item_example.json) is the reference example. An asset with only `href` and `title`, one per array, does not meet this rule — it is a node index, not a STAC asset.
 2. **`id` SHOULD be stable across representations.** If the same product is also served by an external catalog, producers SHOULD use the same `id` in both places. This convention cannot force a catalog to reuse an embedded `id` verbatim — a catalog may have its own uniqueness constraints — but a producer that silently changes the `id` between the in-store copy and the catalog copy breaks the one thing self-description is for: letting a consumer correlate the two.
-3. **Links are optional context, not a dependency.** Per [Store Link Omission](#store-link-omission), the `store` link MUST be omitted. Other links (`collection`, `parent`, `root`, `self`, `license`, `cite-as`, …) MAY be included and typically point to external resources. A consumer without network access can still use the embedded object fully; a consumer with network access gets extra context from these links.
+3. **Links are optional context, not a dependency — except `store`, which is intentionally excluded.** STAC Zarr Best Practices recommends a [`store` link](https://github.com/radiantearth/stac-best-practices/blob/main/best-practices-zarr.md#store-link-relationship) so a STAC object can point a client at the root of the Zarr hierarchy it describes. Under `attribute` encoding that link would point back at the store the object is already embedded in — see [Store Link Omission](#store-link-omission) for why this convention excludes it specifically. Everywhere else the best-practices document applies as written: other link relationships (`collection`, `parent`, `root`, `self`, `license`, `cite-as`, …) MAY be included and typically point to external resources.
 
 A group that only meets some of these — for example, one asset per array with no roles or type, and an `id` that a downstream catalog silently reassigns — is not yet conformant `attribute` encoding. Producers in that position have two honest options: fix the object so it satisfies the three points above, or use `link` encoding and let the catalog that already holds the well-formed object be the source of truth.
 
@@ -215,7 +215,9 @@ If STAC metadata is embedded in a subgroup (`/products/s2/`):
 
 ### Store Link Omission
 
-[The STAC `store` link relationship](https://github.com/radiantearth/stac-best-practices/blob/main/best-practices-zarr.md#store-link-relationship) **MUST** be omitted from embedded STAC objects. Since the STAC object is embedded within the Zarr store itself, a store link would be self-referential and redundant.
+[The STAC `store` link relationship](https://github.com/radiantearth/stac-best-practices/blob/main/best-practices-zarr.md#store-link-relationship) **MUST** be omitted from embedded STAC objects.
+
+This is a narrow, deliberate exception to STAC Zarr Best Practices, not a disagreement with it. That document recommends a `store` link so a STAC object can point a client at the root of the Zarr hierarchy it describes — necessary when the object is served separately from the store, e.g. by a STAC API. Embedded (`attribute` encoding) objects are different: the object lives inside the very store it describes, so a client that has read it has, by construction, already found the store. A `store` link would point back at itself.
 
 Other link relationships (e.g., `collection`, `parent`, `self`, `license`) may be included as needed, typically pointing to external resources.
 
@@ -331,12 +333,7 @@ stac-validator item.json
 
 ### Asset Organization
 
-Follow [STAC Zarr Best Practices](https://github.com/radiantearth/stac-best-practices/blob/main/best-practices-zarr.md) for:
-
-- Asset hierarchy and organization.
-- Band representation patterns.
-- Multi-resolution data (multiscales).
-- Variable and dimension metadata.
+This convention does not define its own rules for asset hierarchy, bands, multiscales, or dimension metadata. It defers entirely to [STAC Zarr Best Practices](https://github.com/radiantearth/stac-best-practices/blob/main/best-practices-zarr.md), and treats that document's Asset Organization section as binding for `attribute` encoding — see [Scope of the Embedded STAC Object](#scope-of-the-embedded-stac-object).
 
 ## Known Implementations
 

@@ -52,7 +52,7 @@
         "AOT_10m": {
           "gsd": 10,
           "href": "quality/atmosphere/r10m/aot",
-          "type": "application/vnd+zarr",
+          "type": "application/vnd.zarr; version=3",
           "roles": ["data"],
           "title": "Aerosol optical thickness (AOT)",
           "nodata": 0,
@@ -64,7 +64,7 @@
         "SCL_20m": {
           "gsd": 20,
           "href": "conditions/mask/l2a_classification/r20m/scl",
-          "type": "application/vnd+zarr",
+          "type": "application/vnd.zarr; version=3",
           "roles": ["data"],
           "title": "Scene classification map (SCL)",
           "nodata": 0,
@@ -76,7 +76,7 @@
         "WVP_10m": {
           "gsd": 10,
           "href": "quality/atmosphere/r10m/wvp",
-          "type": "application/vnd+zarr",
+          "type": "application/vnd.zarr; version=3",
           "roles": ["data"],
           "title": "Water vapour (WVP)",
           "nodata": 0,
@@ -88,7 +88,7 @@
         "reflectance": {
           "gsd": 10,
           "href": "measurements/reflectance",
-          "type": "application/vnd.zarr; version=2; profile=multiscales",
+          "type": "application/vnd.zarr; version=3; profile=multiscales",
           "bands": [
             {
               "gsd": 20,
