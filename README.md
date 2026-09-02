@@ -70,7 +70,7 @@ The convention uses the **key-prefixed pattern** to avoid attribute name collisi
 
 ### Fields
 
-Exactly one of the following four fields MUST be present. There is no separate mode or encoding field: each field has exactly one shape, and which field is present is itself the signal for how to interpret it.
+Exactly one of the following four fields MUST be present. There is no separate mode or encoding field: each field has exactly one shape, and which field is present is itself the signal for how to interpret it. A fifth field, the experimental `stac:array`, is described in [Collection Array Storage](#collection-array-storage-experimental); it is not part of this rule and is not accepted by the current JSON Schema.
 
 | Field Name | Type | Description | Reference |
 |---|---|---|---|
@@ -87,7 +87,6 @@ All four fields are stable and equally supported. This convention does not presc
 - **`stac:key`** references a separate JSON value in the same store. Lets a producer serve a static, file-based catalog (e.g. a `stac.json` next to `zarr.json`) straight from a plain object store over plain HTTP, no query engine required. Tooling that virtualizes or moves a Zarr store by walking only `zarr.json` and chunk keys (Icechunk, VirtualiZarr) doesn't know a referenced key exists, so such an operation can leave it behind.
 - **`stac:link`** points at an external canonical STAC object, typically a STAC API. Keeps the Zarr store minimal and defers to a catalog that's already the source of truth. Resolving it needs network access.
 
-
 ### `stac:item` and `stac:collection`
 
 Each holds a complete, valid STAC object, embedded directly as JSON in the Zarr group attributes, never a path, a key, or a link. This is the authoritative source of truth for every asset it lists. See [Scope of the STAC Object](#scope-of-the-stac-object).
@@ -102,7 +101,7 @@ Each holds a complete, valid STAC object, embedded directly as JSON in the Zarr 
 
 ### `stac:key`
 
-A key (a Unicode string, relative to the group carrying this attribute) referencing a separate JSON value elsewhere in the same Zarr store that holds the STAC object. This is how a producer serves a static, file-based STAC catalog (e.g. a `stac.json` next to `zarr.json`) alongside the data, without duplicating the object into attributes. See [Choosing a Field](#choosing-a-field) for the trade-off against `stac:item`/`stac:collection` and `stac:link`.
+A key (a Unicode string, relative to the group carrying this attribute) referencing a separate JSON value elsewhere in the same Zarr store that holds the STAC object. This is how a producer serves a static, file-based STAC catalog (e.g. a `stac.json` next to `zarr.json`) alongside the data, without duplicating the object into attributes. The referenced document is authoritative for every asset it lists, on the same terms as an embedded object: see [Scope of the STAC Object](#scope-of-the-stac-object). See [Choosing a Field](#choosing-a-field) for the trade-off against `stac:item`/`stac:collection` and `stac:link`.
 
 `stac:key` doesn't say whether the referenced document is an Item or a Collection: read the document's own `type` field to find out.
 
@@ -188,7 +187,7 @@ A group that only meets some of these (for example, one asset per array with no 
 
 This section applies to `stac:item`, `stac:collection`, and the document referenced by `stac:key`. For all three, the STAC object lives inside the same Zarr store as the attribute that points to it. Under `stac:link`, the referenced object's own hrefs are resolved by whatever store it actually lives in; this convention has no say over them.
 
-All asset `href` values in an embedded STAC object **MUST** be relative to the Zarr group containing the STAC metadata. This ensures:
+All asset `href` values in the STAC object **MUST** be relative to the Zarr group containing the STAC metadata. This ensures:
 
 - **Portability**: the Zarr store can be moved without breaking references.
 - **Scope**: STAC objects can only reference assets within their own hierarchy.
@@ -241,11 +240,11 @@ Other link relationships (e.g., `collection`, `parent`, `self`, `license`) may b
 
 *This section is experimental and open for community feedback. There is no JSON Schema and no validated example for `stac:array` yet. See [Status](#status).*
 
-`stac:array` stores a set of STAC objects (for example, a whole Collection's items) as data array(s) within the Zarr store, instead of one JSON document per item. There is no real benefit to storing a single STAC object this way, but it is supported for completeness. `stac:array` holds a relative path to the array node.
+`stac:array` would store a set of STAC objects (for example, a whole Collection's items) as data array(s) within the Zarr store, instead of one JSON document per item. There is no real benefit to storing a single STAC object this way. `stac:array` holds a relative path to the array node.
 
 ### STAC Array Structure
 
-The array encoding would use Zarr's multidimensional array capabilities to store STAC metadata as **[sparse arrays](https://github.com/zarr-developers/zarr-specs/issues/245) with labeled space-time dimensions**.
+`stac:array` would use Zarr's multidimensional array capabilities to store STAC metadata as **[sparse arrays](https://github.com/zarr-developers/zarr-specs/issues/245) with labeled space-time dimensions**.
 This approach aligns naturally with core STAC metadata, and could provide:
 
 - **Scalability**: support for millions of STAC items through chunked storage and spatial indexing.
@@ -317,7 +316,7 @@ For a Sentinel-2 collection organized by MGRS tiles:
 The convention includes a JSON Schema that validates:
 
 1. **Convention Structure**: ensures proper `zarr_conventions` metadata.
-2. **Mutual Exclusivity**: ensures exactly one of `stac:item`, `stac:collection`, `stac:key`, or `stac:link` is present (`stac:array` is not yet covered. See [Status](#status)).
+2. **Mutual Exclusivity**: ensures exactly one of `stac:item`, `stac:collection`, `stac:key`, or `stac:link` is present. `stac:array` is not yet covered, so a store using it does not validate against this schema; see [Status](#status).
 3. **STAC Compliance**: references official STAC schemas for Item and Collection validation of `stac:item`/`stac:collection`.
 
 ### Validation Tools

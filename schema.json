@@ -86,7 +86,7 @@
       "properties": {
         "zarr_conventions": true,
         "stac:item": {
-          "description": "A complete, embedded STAC Item. Authoritative for every asset it lists — see README 'Scope of the Embedded STAC Object'.",
+          "description": "A complete, embedded STAC Item. Authoritative for every asset it lists. See README 'Scope of the STAC Object'.",
           "oneOf": [
             {
               "$ref": "https://schemas.stacspec.org/v1.0.0/item-spec/json-schema/item.json"
@@ -97,7 +97,7 @@
           ]
         },
         "stac:collection": {
-          "description": "A complete, embedded STAC Collection. Authoritative for every asset it lists — see README 'Scope of the Embedded STAC Object'.",
+          "description": "A complete, embedded STAC Collection. Authoritative for every asset it lists. See README 'Scope of the STAC Object'.",
           "oneOf": [
             {
               "$ref": "https://schemas.stacspec.org/v1.0.0/collection-spec/json-schema/collection.json"
@@ -109,7 +109,7 @@
         },
         "stac:key": {
           "type": "string",
-          "description": "A key (Unicode string), relative to the group carrying this attribute, referencing a separate JSON value elsewhere in the same Zarr store that holds the STAC object. See README 'Choosing a Field' for when to prefer this over stac:item/stac:collection or stac:link."
+          "description": "A key (Unicode string), relative to the group carrying this attribute, referencing a separate JSON value elsewhere in the same Zarr store that holds the STAC object. The referenced document is authoritative for every asset it lists, on the same terms as an embedded object: see README 'Scope of the STAC Object'. See README 'Choosing a Field' for when to prefer this over stac:item/stac:collection or stac:link."
         },
         "stac:link": {
           "$ref": "#/$defs/stacLink"
