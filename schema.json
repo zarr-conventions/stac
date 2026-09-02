@@ -82,132 +82,50 @@
     },
     "stacAttributes": {
       "type": "object",
-      "description": "STAC convention attributes using key-prefixed pattern",
+      "description": "STAC convention attributes using key-prefixed pattern. Exactly one of stac:item, stac:collection, stac:key, or stac:link MUST be present; each has a single, fixed shape, so no separate encoding discriminator is needed.",
       "properties": {
         "zarr_conventions": true,
-        "stac:encoding": {
-          "type": "string",
-          "enum": ["attribute", "key", "link"],
-          "description": "REQUIRED. Encoding type for STAC objects. 'attribute' embeds the object directly in attributes. 'key' references a separate JSON value within the Zarr store, by key. 'link' points to the canonical STAC object at an external location via a STAC Link Object. The experimental 'array' encoding (see README) is not yet covered by this schema."
-        }
-      },
-      "required": ["stac:encoding"],
-      "oneOf": [
-        {
-          "$ref": "#/$defs/jsonAttrsEncoding"
-        },
-        {
-          "$ref": "#/$defs/jsonKeyEncoding"
-        },
-        {
-          "$ref": "#/$defs/linkEncoding"
-        }
-      ],
-      "additionalProperties": true
-    },
-    "jsonAttrsEncoding": {
-      "type": "object",
-      "description": "STAC object embedded directly in attributes. This is the authoritative source of truth for the assets it lists.",
-      "properties": {
-        "stac:encoding": {
-          "const": "attribute"
-        }
-      },
-      "oneOf": [
-        {
-          "properties": {
-            "stac:item": {
-              "oneOf": [
-                {
-                  "$ref": "https://schemas.stacspec.org/v1.0.0/item-spec/json-schema/item.json"
-                },
-                {
-                  "$ref": "https://schemas.stacspec.org/v1.1.0/item-spec/json-schema/item.json"
-                }
-              ]
+        "stac:item": {
+          "description": "A complete, embedded STAC Item. Authoritative for every asset it lists — see README 'Scope of the Embedded STAC Object'.",
+          "oneOf": [
+            {
+              "$ref": "https://schemas.stacspec.org/v1.0.0/item-spec/json-schema/item.json"
+            },
+            {
+              "$ref": "https://schemas.stacspec.org/v1.1.0/item-spec/json-schema/item.json"
             }
-          },
-          "required": ["stac:item"],
-          "not": {
-            "required": ["stac:collection"]
-          }
+          ]
         },
-        {
-          "properties": {
-            "stac:collection": {
-              "oneOf": [
-                {
-                  "$ref": "https://schemas.stacspec.org/v1.0.0/collection-spec/json-schema/collection.json"
-                },
-                {
-                  "$ref": "https://schemas.stacspec.org/v1.1.0/collection-spec/json-schema/collection.json"
-                }
-              ]
+        "stac:collection": {
+          "description": "A complete, embedded STAC Collection. Authoritative for every asset it lists — see README 'Scope of the Embedded STAC Object'.",
+          "oneOf": [
+            {
+              "$ref": "https://schemas.stacspec.org/v1.0.0/collection-spec/json-schema/collection.json"
+            },
+            {
+              "$ref": "https://schemas.stacspec.org/v1.1.0/collection-spec/json-schema/collection.json"
             }
-          },
-          "required": ["stac:collection"],
-          "not": {
-            "required": ["stac:item"]
-          }
-        }
-      ]
-    },
-    "jsonKeyEncoding": {
-      "type": "object",
-      "description": "STAC object stored as a separate value in the Zarr store, referenced by a key. Design status open — see https://github.com/zarr-conventions/stac/issues/2 and https://github.com/zarr-conventions/stac/issues/4.",
-      "properties": {
-        "stac:encoding": {
-          "const": "key"
+          ]
         },
         "stac:key": {
           "type": "string",
-          "description": "REQUIRED for key encoding. The key (Unicode string) that references the STAC JSON object in the Zarr store, following the abstract store interface. Relative to the group containing this metadata."
-        }
-      },
-      "required": ["stac:key"],
-      "not": {
-        "anyOf": [
-          { "required": ["stac:item"] },
-          { "required": ["stac:collection"] }
-        ]
-      }
-    },
-    "linkEncoding": {
-      "type": "object",
-      "description": "The STAC object is not embedded. Instead, a STAC Link Object points to the canonical STAC Item or Collection describing this Zarr node, hosted elsewhere (e.g. a STAC API).",
-      "properties": {
-        "stac:encoding": {
-          "const": "link"
+          "description": "A key (Unicode string), relative to the group carrying this attribute, referencing a separate JSON value elsewhere in the same Zarr store that holds the STAC object. Design open — see README Status and Issues #2 and #4."
+        },
+        "stac:link": {
+          "$ref": "#/$defs/stacLink"
         }
       },
       "oneOf": [
-        {
-          "properties": {
-            "stac:item": {
-              "$ref": "#/$defs/stacLink"
-            }
-          },
-          "required": ["stac:item"],
-          "not": {
-            "required": ["stac:collection"]
-          }
-        },
-        {
-          "properties": {
-            "stac:collection": {
-              "$ref": "#/$defs/stacLink"
-            }
-          },
-          "required": ["stac:collection"],
-          "not": {
-            "required": ["stac:item"]
-          }
-        }
-      ]
+        { "required": ["stac:item"] },
+        { "required": ["stac:collection"] },
+        { "required": ["stac:key"] },
+        { "required": ["stac:link"] }
+      ],
+      "additionalProperties": true
     },
     "stacLink": {
       "type": "object",
-      "description": "A STAC Link Object identifying the canonical, external location of a STAC Item or Collection.",
+      "description": "A STAC Link Object identifying the canonical, external location of a STAC Item or Collection. Which of the two it is is not conveyed here; follow href and inspect the retrieved object's own type.",
       "properties": {
         "href": {
           "type": "string",

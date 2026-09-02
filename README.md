@@ -8,7 +8,7 @@
 - **Extension Maturity Classification**: Proposal
 - **Owner**: @emmanuelmathot
 
-This convention defines a standard way to attach [STAC](https://stacspec.org/) (SpatioTemporal Asset Catalog) metadata to a Zarr group. It covers three ways to attach it: embedding a complete STAC Item or Collection directly in the group's attributes, referencing a separate JSON value stored elsewhere in the same Zarr store, or pointing to the canonical STAC object at an external location. Either way, the Zarr group carries enough information for a STAC-aware tool to discover, describe, and validate the data.
+This convention defines a standard way to attach [STAC](https://stacspec.org/) (SpatioTemporal Asset Catalog) metadata to a Zarr group. It defines four fields, each with one fixed shape and one job: embed a complete STAC Item or Collection directly in the group's attributes, reference a separate JSON value stored elsewhere in the same Zarr store, or point to the canonical STAC object at an external location. Which field is present tells a reader everything it needs to know — there is no separate mode or encoding flag to check first. Either way, the Zarr group carries enough information for a STAC-aware tool to discover, describe, and validate the data.
 
 ## Table of Contents
 
@@ -28,14 +28,14 @@ This convention defines a standard way to attach [STAC](https://stacspec.org/) (
 
 The STAC Zarr Convention supports two patterns:
 
-1. **Metadata Sidecar**: attach STAC metadata to a Zarr group as the source of truth (or a pointer to the source of truth) for a single dataset. Use `attribute` to embed the object, `key` to reference a separate JSON value elsewhere in the same store, or `link` to point to it at an external location. This is the stable part of the convention.
-2. **Collection Array Storage**: store a whole STAC Collection's worth of items as a multidimensional array, indexed by space and time, using the `array` encoding. This pattern is experimental — see [Status](#status).
+1. **Metadata Sidecar**: attach STAC metadata to a Zarr group as the source of truth (or a pointer to the source of truth) for a single dataset. Use `stac:item` or `stac:collection` to embed the object directly, `stac:key` to reference a separate JSON value elsewhere in the same store, or `stac:link` to point to it at an external location. This is the stable part of the convention.
+2. **Collection Array Storage**: store a whole STAC Collection's worth of items as a multidimensional array, indexed by space and time, using `stac:array`. This pattern is experimental — see [Status](#status).
 
 ## Status
 
-- **`attribute` and `link` encodings** are stable enough to build on. They have a JSON Schema, validated examples, and a settled attribute model.
-- **`key` encoding** is covered by the JSON Schema and usable today, but its long-term shape is an open design question — see [Issue #2](https://github.com/zarr-conventions/stac/issues/2) and [Issue #4](https://github.com/zarr-conventions/stac/issues/4), both open. In short: Zarr v3 tooling that virtualizes or moves stores (Icechunk, VirtualiZarr) doesn't expect keys outside `zarr.json` and chunk data, so a `key`-encoded STAC object may not survive every kind of store operation. Producers who need that portability guarantee today should prefer `attribute` or `link`; `key` remains here for producers serving a plain object store as a static catalog, where that trade-off is acceptable.
-- **`array` encoding** is an early-stage experiment. It has no JSON Schema, no validated examples, and its on-disk layout is still open for discussion. Do not build production tooling against it yet. Read [Collection Array Storage](#collection-array-storage-experimental) for the current thinking, and use the issue tracker to weigh in before it stabilizes.
+- **`stac:item`, `stac:collection`, and `stac:link`** are stable enough to build on. They have a JSON Schema, validated examples, and a settled, single-shape attribute model.
+- **`stac:key`** is covered by the JSON Schema and usable today, but its long-term shape is an open design question — see [Issue #2](https://github.com/zarr-conventions/stac/issues/2) and [Issue #4](https://github.com/zarr-conventions/stac/issues/4), both open. In short: Zarr v3 tooling that virtualizes or moves stores (Icechunk, VirtualiZarr) doesn't expect keys outside `zarr.json` and chunk data, so a `stac:key` reference may not survive every kind of store operation. Producers who need that portability guarantee today should prefer `stac:item`/`stac:collection` or `stac:link`; `stac:key` remains here for producers serving a plain object store as a static catalog, where that trade-off is acceptable.
+- **`stac:array`** is an early-stage experiment. It has no JSON Schema, no validated examples, and its on-disk layout is still open for discussion. Do not build production tooling against it yet. Read [Collection Array Storage](#collection-array-storage-experimental) for the current thinking, and use the issue tracker to weigh in before it stabilizes.
 
 ## Motivation
 
@@ -49,7 +49,7 @@ For individual datasets, attaching STAC metadata this way gives:
 2. **Simplified Distribution**: one Zarr store carries both data and metadata.
 3. **Offline Capability**: no external catalog service is needed to understand the data.
 4. **STAC Compliance**: the embedded object is a real STAC Item or Collection, so standard STAC tools and validators work on it directly.
-5. **Producer Choice**: `attribute` embeds the object for full offline use; `key` keeps it out of the attributes while staying inside the same store, for producers serving a static catalog from a plain object store; `link` keeps the Zarr store small and defers to a catalog that is already the source of truth (see [Issue #1](https://github.com/zarr-conventions/stac/issues/1)).
+5. **Producer Choice**: `stac:item`/`stac:collection` embed the object for full offline use; `stac:key` keeps it out of the attributes while staying inside the same store, for producers serving a static catalog from a plain object store; `stac:link` keeps the Zarr store small and defers to a catalog that is already the source of truth (see [Issue #1](https://github.com/zarr-conventions/stac/issues/1)).
 
 ### Why Collection Array Storage (experimental)
 
@@ -71,62 +71,62 @@ The convention uses the **key-prefixed pattern** to avoid attribute name collisi
 
 ### Fields
 
-| Field Name | Type | Description | Required | Reference |
-|---|---|---|---|---|
-| `stac:encoding` | string | Encoding type for the STAC object. | Yes | [stac:encoding](#stacencoding) |
-| `stac:item` | [STAC Item](https://github.com/radiantearth/stac-spec/tree/master/item-spec) or [Link Object](#link-object) | A STAC Item, or a link to one, depending on `stac:encoding`. | Conditional* | [stac:item / stac:collection](#stacitem-and-staccollection) |
-| `stac:collection` | [STAC Collection](https://github.com/radiantearth/stac-spec/tree/master/collection-spec) or [Link Object](#link-object) | A STAC Collection, or a link to one, depending on `stac:encoding`. | Conditional* | [stac:item / stac:collection](#stacitem-and-staccollection) |
-| `stac:key` | string | Store-relative key referencing a separate JSON value holding the STAC object. Only used when `stac:encoding` is `key`. | Conditional* | [stac:encoding](#stacencoding) |
+Exactly one of the following four fields MUST be present. There is no separate mode or encoding field: each field has exactly one shape, and which field is present is itself the signal for how to interpret it.
 
-\* Under `attribute` or `link` encoding, exactly one of `stac:item` or `stac:collection` MUST be present, and `stac:key` MUST NOT be present. Under `key` encoding, `stac:key` MUST be present, and neither `stac:item` nor `stac:collection` may be.
+| Field Name | Type | Description | Reference |
+|---|---|---|---|
+| `stac:item` | [STAC Item](https://github.com/radiantearth/stac-spec/tree/master/item-spec) | A complete, embedded STAC Item. | [stac:item / stac:collection](#stacitem-and-staccollection) |
+| `stac:collection` | [STAC Collection](https://github.com/radiantearth/stac-spec/tree/master/collection-spec) | A complete, embedded STAC Collection. | [stac:item / stac:collection](#stacitem-and-staccollection) |
+| `stac:key` | string | A store-relative key referencing a separate JSON value holding the STAC object. | [stac:key](#stackey) |
+| `stac:link` | [Link Object](#staclink) | A pointer to the canonical STAC object at an external location. | [stac:link](#staclink) |
 
 ### `stac:item` and `stac:collection`
 
-These fields are only used under `attribute` or `link` encoding — `key` encoding uses `stac:key` instead (see [`stac:encoding`](#stacencoding)). The shape depends on which of the two: under `attribute` encoding they hold the full STAC object; under `link` encoding they hold a Link Object (below). Either way, exactly one of `stac:item` or `stac:collection` MUST be present — never both, never neither.
+Each holds a complete, valid STAC object, embedded directly as JSON in the Zarr group attributes — never a path, a key, or a link. This is the authoritative source of truth for every asset it lists — see [Scope of the Embedded STAC Object](#scope-of-the-embedded-stac-object).
 
-#### Link Object
-
-Used by `stac:item` / `stac:collection` when `stac:encoding` is `link`.
-
-| Field Name | Type | Description | Required |
-|---|---|---|---|
-| `href` | string (URI) | Absolute URL to the canonical STAC Item or Collection. Not resolved against the Zarr store. | Yes |
-| `rel` | string | Link relation type. Defaults to `self` when omitted. | No |
-| `type` | string | Media type of the target, e.g. `application/geo+json` for an Item, `application/json` for a Collection. | No |
-
-### `stac:encoding`
-
-Specifies how the STAC object relates to the Zarr group. Valid values are:
-
-- **`attribute`** (Metadata Sidecar, stable): `stac:item` or `stac:collection` holds the complete STAC object, embedded directly as JSON in the Zarr group attributes. This is the authoritative source of truth for the assets it lists — see [Scope of the Embedded STAC Object](#scope-of-the-embedded-stac-object).
-- **`key`** (Metadata Sidecar, **design open, see [Issue #2](https://github.com/zarr-conventions/stac/issues/2) and [Issue #4](https://github.com/zarr-conventions/stac/issues/4)**): `stac:key` holds the key (a Unicode string, relative to the group carrying this attribute) that references a separate JSON value elsewhere in the same Zarr store holding the STAC object. This is how a producer serves a static, file-based STAC catalog (e.g. a `stac.json` next to `zarr.json`) alongside the data, without duplicating the object into attributes. It trades away one guarantee to get that: Zarr v3 tooling that virtualizes or moves stores (Icechunk, VirtualiZarr) doesn't expect keys outside `zarr.json` and chunk data, so a `key`-encoded object may not survive every kind of store operation. See [Status](#status).
-- **`link`** (Metadata Sidecar, stable): `stac:item` or `stac:collection` holds a [STAC Link Object](https://github.com/radiantearth/stac-spec/blob/master/commons/links.md) — `{"href": "...", "rel": "...", "type": "..."}` — pointing to the canonical STAC object at an external location, typically a STAC API. Use this when a catalog, not the Zarr store, is the source of truth: the Zarr store stays small, and readers follow `href` to get the full object. `href` MUST be an absolute URL; it is not resolved against the Zarr store.
-- **`array`** (Collection Array Storage, **experimental**): `stac:item` or `stac:collection` holds a relative path to an array node that stores STAC objects as data. See [Collection Array Storage](#collection-array-storage-experimental). Not covered by the JSON Schema yet.
-
-**Example — `attribute` encoding:**
+**Example:**
 
 ```json
 {
-  "stac:encoding": "attribute",
   "stac:item": { "type": "Feature", "id": "...", "...": "..." }
 }
 ```
 
-**Example — `key` encoding:**
+### `stac:key`
+
+**Design open — see [Issue #2](https://github.com/zarr-conventions/stac/issues/2) and [Issue #4](https://github.com/zarr-conventions/stac/issues/4).**
+
+A key (a Unicode string, relative to the group carrying this attribute) referencing a separate JSON value elsewhere in the same Zarr store that holds the STAC object. This is how a producer serves a static, file-based STAC catalog (e.g. a `stac.json` next to `zarr.json`) alongside the data, without duplicating the object into attributes. It trades away one guarantee to get that: Zarr v3 tooling that virtualizes or moves stores (Icechunk, VirtualiZarr) doesn't expect keys outside `zarr.json` and chunk data, so a `stac:key` reference may not survive every kind of store operation. See [Status](#status).
+
+`stac:key` doesn't say whether the referenced document is an Item or a Collection — read the document's own `type` field to find out.
+
+**Example:**
 
 ```json
 {
-  "stac:encoding": "key",
   "stac:key": "stac.json"
 }
 ```
 
-**Example — `link` encoding:**
+`stac:key` is not the same as `stac:link`: `stac:key` stays inside the current Zarr store (the referenced JSON is another value in the same abstract store, addressed by a store-relative key); `stac:link` leaves the store entirely (an absolute URL to wherever the object is actually served). Which one a producer should reach for is exactly the open question in [Issue #2](https://github.com/zarr-conventions/stac/issues/2) and [Issue #4](https://github.com/zarr-conventions/stac/issues/4).
+
+### `stac:link`
+
+A [STAC Link Object](https://github.com/radiantearth/stac-spec/blob/master/commons/links.md) pointing to the canonical STAC object at an external location, typically a STAC API. Use this when a catalog, not the Zarr store, is the source of truth: the Zarr store stays small, and readers follow `href` to get the full object.
+
+| Field Name | Type | Description | Required |
+|---|---|---|---|
+| `href` | string (URI) | Absolute URL to the canonical STAC Item or Collection. MUST NOT be relative to the Zarr store, since the target lives outside it. | Yes |
+| `rel` | string | Link relation type. Defaults to `self` when omitted. | No |
+| `type` | string | Media type of the target, e.g. `application/geo+json` for an Item, `application/json` for a Collection. | No |
+
+`stac:link` doesn't say whether the target is an Item or a Collection either — follow `href` and inspect the retrieved object's own `type`, or use the Link Object's own `type` (media type) as a hint before fetching.
+
+**Example:**
 
 ```json
 {
-  "stac:encoding": "link",
-  "stac:item": {
+  "stac:link": {
     "rel": "self",
     "type": "application/geo+json",
     "href": "https://api.example.com/stac/collections/sentinel-2-l2a/items/S2C_..."
@@ -134,9 +134,7 @@ Specifies how the STAC object relates to the Zarr group. Valid values are:
 }
 ```
 
-`link` encoding is not the same as the org's [`ref` convention](https://github.com/R-CF/zarr_convention_ref): `ref` points to another *Zarr* node (array, group, or an attribute inside one), addressed by store URI plus a relative or absolute node path. `link` points to a *STAC* resource — usually a STAC API endpoint — which is not necessarily Zarr-addressable at all, and carries STAC's own `rel`/`type` vocabulary instead of a node path. Use `ref` to point at another Zarr object; use `link` to point at a STAC Item or Collection, wherever it is served.
-
-`key` encoding is also not the same as `link`: `key` stays inside the current Zarr store (the referenced JSON is another object in the same abstract store, addressed by a store-relative key); `link` leaves the store entirely (an absolute URL to wherever the object is actually served). Which one a producer should reach for is exactly the open question in [Issue #2](https://github.com/zarr-conventions/stac/issues/2) and [Issue #4](https://github.com/zarr-conventions/stac/issues/4).
+`stac:link` is not the same as the org's [`ref` convention](https://github.com/R-CF/zarr_convention_ref): `ref` points to another *Zarr* node (array, group, or an attribute inside one), addressed by store URI plus a relative or absolute node path. `stac:link` points to a *STAC* resource — usually a STAC API endpoint — which is not necessarily Zarr-addressable at all, and carries STAC's own `rel`/`type` vocabulary instead of a node path. Use `ref` to point at another Zarr object; use `stac:link` to point at a STAC Item or Collection, wherever it is served.
 
 ### Convention Metadata
 
@@ -157,7 +155,7 @@ The convention is identified in the `zarr_conventions` array with the following 
 
 At minimum, one of `spec_url`, `schema_url`, or `uuid` must be present to identify the convention.
 
-**This declaration is what makes the convention visible.** A group that carries `stac:item` or `stac:collection` without a matching entry in `zarr_conventions` is not conformant, and a spec-compliant reader has no way to know the attribute is there or how to interpret it. If your producer already emits STAC-shaped metadata under a different, undeclared attribute name (for example `stac_discovery`), the fix is to declare it here — see [Scope of the Embedded STAC Object](#scope-of-the-embedded-stac-object) for what else has to be true before that metadata counts as conformant.
+**This declaration is what makes the convention visible.** A group that carries `stac:item`, `stac:collection`, `stac:key`, or `stac:link` without a matching entry in `zarr_conventions` is not conformant, and a spec-compliant reader has no way to know the attribute is there or how to interpret it. If your producer already emits STAC-shaped metadata under a different, undeclared attribute name (for example `stac_discovery`), the fix is to declare it here — see [Scope of the Embedded STAC Object](#scope-of-the-embedded-stac-object) for what else has to be true before that metadata counts as conformant.
 
 ## Applicable To
 
@@ -168,21 +166,21 @@ This convention can be used with these parts of the Zarr hierarchy:
 
 ## Scope of the Embedded STAC Object
 
-This section applies to the `attribute` encoding, where the Zarr group carries the actual STAC object. It answers one question: is that object an authoritative STAC Item that a catalog can ingest as-is, or a producer-side hint that a catalog is expected to transform? This convention takes a clear position:
+This section applies to `stac:item` and `stac:collection`, where the Zarr group carries the actual STAC object. It answers one question: is that object an authoritative STAC Item that a catalog can ingest as-is, or a producer-side hint that a catalog is expected to transform? This convention takes a clear position:
 
-**The embedded object MUST be a complete, valid STAC Item or Collection under `attribute` encoding.** It is authoritative for every asset it lists. In particular:
+**The embedded object MUST be a complete, valid STAC Item or Collection.** It is authoritative for every asset it lists. In particular:
 
-1. **Assets follow [STAC Zarr Best Practices' Asset Organization rules](https://github.com/radiantearth/stac-best-practices/blob/main/best-practices-zarr.md#asset-organization) and [Bands Representation](https://github.com/radiantearth/stac-best-practices/blob/main/best-practices-zarr.md#bands-representation) patterns**, which this convention treats as binding for `attribute` encoding rather than restating. [`examples/sentinel2_item_example.json`](examples/sentinel2_item_example.json) is the reference example. An asset with only `href` and `title`, one per array, does not meet this rule — it is a node index, not a STAC asset.
+1. **Assets follow [STAC Zarr Best Practices' Asset Organization rules](https://github.com/radiantearth/stac-best-practices/blob/main/best-practices-zarr.md#asset-organization) and [Bands Representation](https://github.com/radiantearth/stac-best-practices/blob/main/best-practices-zarr.md#bands-representation) patterns**, which this convention treats as binding rather than restating. [`examples/sentinel2_item_example.json`](examples/sentinel2_item_example.json) is the reference example. An asset with only `href` and `title`, one per array, does not meet this rule — it is a node index, not a STAC asset.
 2. **`id` SHOULD be stable across representations.** If the same product is also served by an external catalog, producers SHOULD use the same `id` in both places. This convention cannot force a catalog to reuse an embedded `id` verbatim — a catalog may have its own uniqueness constraints — but a producer that silently changes the `id` between the in-store copy and the catalog copy breaks the one thing self-description is for: letting a consumer correlate the two.
-3. **Links are optional context, not a dependency — except `store`, which is intentionally excluded.** STAC Zarr Best Practices recommends a [`store` link](https://github.com/radiantearth/stac-best-practices/blob/main/best-practices-zarr.md#store-link-relationship) so a STAC object can point a client at the root of the Zarr hierarchy it describes. Under `attribute` encoding that link would point back at the store the object is already embedded in — see [Store Link Omission](#store-link-omission) for why this convention excludes it specifically. Everywhere else the best-practices document applies as written: other link relationships (`collection`, `parent`, `root`, `self`, `license`, `cite-as`, …) MAY be included and typically point to external resources.
+3. **Links are optional context, not a dependency — except `store`, which is intentionally excluded.** STAC Zarr Best Practices recommends a [`store` link](https://github.com/radiantearth/stac-best-practices/blob/main/best-practices-zarr.md#store-link-relationship) so a STAC object can point a client at the root of the Zarr hierarchy it describes. For an object embedded via `stac:item`/`stac:collection`, that link would point back at the store the object is already embedded in — see [Store Link Omission](#store-link-omission) for why this convention excludes it specifically. Everywhere else the best-practices document applies as written: other link relationships (`collection`, `parent`, `root`, `self`, `license`, `cite-as`, …) MAY be included and typically point to external resources.
 
-A group that only meets some of these — for example, one asset per array with no roles or type, and an `id` that a downstream catalog silently reassigns — is not yet conformant `attribute` encoding. Producers in that position have two honest options: fix the object so it satisfies the three points above, or use `link` encoding and let the catalog that already holds the well-formed object be the source of truth.
+A group that only meets some of these — for example, one asset per array with no roles or type, and an `id` that a downstream catalog silently reassigns — is not yet a conformant `stac:item`/`stac:collection`. Producers in that position have two honest options: fix the object so it satisfies the three points above, or use `stac:link` and let the catalog that already holds the well-formed object be the source of truth.
 
 ## STAC URL Resolution
 
 ### Asset Href Resolution
 
-This section applies to the `attribute` encoding only. Under `link` encoding, the referenced object's own hrefs are resolved by whatever store it actually lives in — this convention has no say over them. Under `key` encoding, how asset hrefs in the keyed document resolve is not yet specified — it's part of the open discussion in [Issue #2](https://github.com/zarr-conventions/stac/issues/2) and [Issue #4](https://github.com/zarr-conventions/stac/issues/4).
+This section applies to `stac:item` and `stac:collection` only. Under `stac:link`, the referenced object's own hrefs are resolved by whatever store it actually lives in — this convention has no say over them. Under `stac:key`, how asset hrefs in the keyed document resolve is not yet specified — it's part of the open discussion in [Issue #2](https://github.com/zarr-conventions/stac/issues/2) and [Issue #4](https://github.com/zarr-conventions/stac/issues/4).
 
 All asset `href` values in an embedded STAC object **MUST** be relative to the Zarr group containing the STAC metadata. This ensures:
 
@@ -227,17 +225,17 @@ If STAC metadata is embedded in a subgroup (`/products/s2/`):
 
 ### Store Link Omission
 
-[The STAC `store` link relationship](https://github.com/radiantearth/stac-best-practices/blob/main/best-practices-zarr.md#store-link-relationship) **MUST** be omitted from embedded STAC objects.
+[The STAC `store` link relationship](https://github.com/radiantearth/stac-best-practices/blob/main/best-practices-zarr.md#store-link-relationship) **MUST** be omitted from objects embedded via `stac:item`/`stac:collection`.
 
-This is a narrow, deliberate exception to STAC Zarr Best Practices, not a disagreement with it. That document recommends a `store` link so a STAC object can point a client at the root of the Zarr hierarchy it describes — necessary when the object is served separately from the store, e.g. by a STAC API. Embedded (`attribute` encoding) objects are different: the object lives inside the very store it describes, so a client that has read it has, by construction, already found the store. A `store` link would point back at itself.
+This is a narrow, deliberate exception to STAC Zarr Best Practices, not a disagreement with it. That document recommends a `store` link so a STAC object can point a client at the root of the Zarr hierarchy it describes — necessary when the object is served separately from the store, e.g. by a STAC API. Embedded objects are different: the object lives inside the very store it describes, so a client that has read it has, by construction, already found the store. A `store` link would point back at itself.
 
 Other link relationships (e.g., `collection`, `parent`, `self`, `license`) may be included as needed, typically pointing to external resources.
 
 ## Collection Array Storage (Experimental)
 
-*This section is experimental and open for community feedback. There is no JSON Schema and no validated example for this encoding yet — see [Status](#status).*
+*This section is experimental and open for community feedback. There is no JSON Schema and no validated example for `stac:array` yet — see [Status](#status).*
 
-`array` encoding stores a set of STAC objects — for example, a whole Collection's items — as data array(s) within the Zarr store, instead of one JSON document per item. There is no real benefit to storing a single STAC object this way, but it is supported for completeness. With this encoding, the `stac:item` or `stac:collection` attribute holds a relative path to the array node.
+`stac:array` stores a set of STAC objects — for example, a whole Collection's items — as data array(s) within the Zarr store, instead of one JSON document per item. There is no real benefit to storing a single STAC object this way, but it is supported for completeness. `stac:array` holds a relative path to the array node.
 
 ### STAC Array Structure
 
@@ -300,11 +298,11 @@ For a Sentinel-2 collection organized by MGRS tiles:
 
 ## Examples
 
-- [Minimal STAC Item](examples/minimal_item_example.json) — a minimal example showing the required fields, `attribute` encoding.
-- [STAC Collection](examples/collection_example.json) — embedding a STAC Collection, `attribute` encoding.
-- [Sentinel-2 Scene](examples/sentinel2_item_example.json) — Sentinel-2 L2A data with multiple group-level assets, bands, and extensions, `attribute` encoding. This is the reference example for [asset granularity](#scope-of-the-embedded-stac-object).
-- [In-Store Key](examples/key_item_example.json) — referencing a separate `stac.json` value in the same store, `key` encoding.
-- [External Link](examples/link_item_example.json) — pointing to a canonical STAC Item hosted in an external STAC API, `link` encoding.
+- [Minimal STAC Item](examples/minimal_item_example.json) — a minimal example showing the required fields, `stac:item`.
+- [STAC Collection](examples/collection_example.json) — embedding a STAC Collection, `stac:collection`.
+- [Sentinel-2 Scene](examples/sentinel2_item_example.json) — Sentinel-2 L2A data with multiple group-level assets, bands, and extensions, `stac:item`. This is the reference example for [asset granularity](#scope-of-the-embedded-stac-object).
+- [In-Store Key](examples/key_item_example.json) — referencing a separate `stac.json` value in the same store, `stac:key`.
+- [External Link](examples/link_item_example.json) — pointing to a canonical STAC Item hosted in an external STAC API, `stac:link`.
 
 ## Validation
 
@@ -313,9 +311,8 @@ For a Sentinel-2 collection organized by MGRS tiles:
 The convention includes a JSON Schema that validates:
 
 1. **Convention Structure**: ensures proper `zarr_conventions` metadata.
-2. **Encoding Field**: validates the `stac:encoding` value (`attribute`, `key`, or `link`; `array` is not yet covered — see [Status](#status)).
-3. **Mutual Exclusivity**: ensures only one of `stac:item` or `stac:collection` is present.
-4. **STAC Compliance**: references official STAC schemas for Item and Collection validation under `attribute` encoding.
+2. **Mutual Exclusivity**: ensures exactly one of `stac:item`, `stac:collection`, `stac:key`, or `stac:link` is present (`stac:array` is not yet covered — see [Status](#status)).
+3. **STAC Compliance**: references official STAC schemas for Item and Collection validation of `stac:item`/`stac:collection`.
 
 ### Validation Tools
 
@@ -334,7 +331,7 @@ node validate.js schema.json examples/minimal_item_example.json
 
 ### STAC Validation
 
-Since an object embedded with `attribute` encoding is a complete STAC Item or Collection, it can be validated using standard STAC validation tools:
+Since an object embedded via `stac:item` or `stac:collection` is a complete STAC Item or Collection, it can be validated using standard STAC validation tools:
 
 ```bash
 # Extract the STAC object from Zarr metadata
@@ -346,7 +343,7 @@ stac-validator item.json
 
 ### Asset Organization
 
-This convention does not define its own rules for asset hierarchy, bands, multiscales, or dimension metadata. It defers entirely to [STAC Zarr Best Practices](https://github.com/radiantearth/stac-best-practices/blob/main/best-practices-zarr.md), and treats that document's Asset Organization section as binding for `attribute` encoding — see [Scope of the Embedded STAC Object](#scope-of-the-embedded-stac-object).
+This convention does not define its own rules for asset hierarchy, bands, multiscales, or dimension metadata. It defers entirely to [STAC Zarr Best Practices](https://github.com/radiantearth/stac-best-practices/blob/main/best-practices-zarr.md), and treats that document's Asset Organization section as binding for `stac:item`/`stac:collection` — see [Scope of the Embedded STAC Object](#scope-of-the-embedded-stac-object).
 
 ## Known Implementations
 

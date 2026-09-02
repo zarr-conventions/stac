@@ -8,7 +8,6 @@
         "spec_url": "https://github.com/zarr-conventions/stac/blob/v0.1/README.md"
       }
     ],
-    "stac:encoding": "attribute",
     "stac:item": {
       "type": "Feature",
       "stac_version": "1.1.0",

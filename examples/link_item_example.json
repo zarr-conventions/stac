@@ -11,8 +11,7 @@
         "description": "STAC convention for embedding or referencing STAC objects in Zarr group metadata"
       }
     ],
-    "stac:encoding": "link",
-    "stac:item": {
+    "stac:link": {
       "rel": "self",
       "type": "application/geo+json",
       "href": "https://api.explorer.eopf.copernicus.eu/stac/collections/sentinel-2-l2a/items/S2C_MSIL2A_20251128T101401_N0511_R022_T32TQQ_20251128T140816"
