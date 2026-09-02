@@ -16,6 +16,7 @@ This convention defines a standard way to attach [STAC](https://stacspec.org/) (
 - [Status](#status)
 - [Motivation](#motivation)
 - [Convention Attributes](#convention-attributes)
+- [Applicable To](#applicable-to)
 - [Scope of the Embedded STAC Object](#scope-of-the-embedded-stac-object)
 - [STAC URL Resolution](#stac-url-resolution)
 - [Collection Array Storage (Experimental)](#collection-array-storage-experimental)
@@ -69,13 +70,27 @@ The convention uses the **key-prefixed pattern** to avoid attribute name collisi
 
 ### Fields
 
-| Field Name | Type | Description |
-|---|---|---|
-| `stac:encoding` | string | **REQUIRED**. Encoding type for the STAC object. |
-| `stac:item` | [STAC Item](https://github.com/radiantearth/stac-spec/tree/master/item-spec) or [Link Object](#stacencoding) | A STAC Item, or a link to one, depending on `stac:encoding`. |
-| `stac:collection` | [STAC Collection](https://github.com/radiantearth/stac-spec/tree/master/collection-spec) or [Link Object](#stacencoding) | A STAC Collection, or a link to one, depending on `stac:encoding`. |
+| Field Name | Type | Description | Required | Reference |
+|---|---|---|---|---|
+| `stac:encoding` | string | Encoding type for the STAC object. | Yes | [stac:encoding](#stacencoding) |
+| `stac:item` | [STAC Item](https://github.com/radiantearth/stac-spec/tree/master/item-spec) or [Link Object](#link-object) | A STAC Item, or a link to one, depending on `stac:encoding`. | Conditional* | [stac:item / stac:collection](#stacitem-and-staccollection) |
+| `stac:collection` | [STAC Collection](https://github.com/radiantearth/stac-spec/tree/master/collection-spec) or [Link Object](#link-object) | A STAC Collection, or a link to one, depending on `stac:encoding`. | Conditional* | [stac:item / stac:collection](#stacitem-and-staccollection) |
 
-Exactly one of `stac:item` or `stac:collection` MUST be present. A group cannot carry both an Item and a Collection at once.
+\* Exactly one of `stac:item` or `stac:collection` MUST be present. A group cannot carry both an Item and a Collection at once.
+
+### `stac:item` and `stac:collection`
+
+The shape of these fields depends on `stac:encoding`: under `attribute` encoding they hold the full STAC object; under `link` encoding they hold a Link Object (below). Either way, exactly one of `stac:item` or `stac:collection` MUST be present — never both, never neither.
+
+#### Link Object
+
+Used by `stac:item` / `stac:collection` when `stac:encoding` is `link`.
+
+| Field Name | Type | Description | Required |
+|---|---|---|---|
+| `href` | string (URI) | Absolute URL to the canonical STAC Item or Collection. Not resolved against the Zarr store. | Yes |
+| `rel` | string | Link relation type. Defaults to `self` when omitted. | No |
+| `type` | string | Media type of the target, e.g. `application/geo+json` for an Item, `application/json` for a Collection. | No |
 
 ### `stac:encoding`
 
@@ -109,6 +124,8 @@ Specifies how the STAC object relates to the Zarr group. Valid values are:
 
 > Earlier drafts of this convention defined a `key` encoding, which pointed to a separate JSON document stored as a sibling key inside the same Zarr store (e.g. `stac.json` next to `zarr.json`). It has been removed: Zarr v3 tooling (Icechunk, VirtualiZarr, and generic store movers) does not expect keys outside `zarr.json` and array chunks, so writing one is unsafe. `link` replaces it for the "the STAC object lives elsewhere" case — the difference is that `link` points to a URL outside the store, not a key inside it. See [Issue #2](https://github.com/zarr-conventions/stac/issues/2).
 
+`link` encoding is not the same as the org's [`ref` convention](https://github.com/R-CF/zarr_convention_ref): `ref` points to another *Zarr* node (array, group, or an attribute inside one), addressed by store URI plus a relative or absolute node path. `link` points to a *STAC* resource — usually a STAC API endpoint — which is not necessarily Zarr-addressable at all, and carries STAC's own `rel`/`type` vocabulary instead of a node path. Use `ref` to point at another Zarr object; use `link` to point at a STAC Item or Collection, wherever it is served.
+
 ### Convention Metadata
 
 The convention is identified in the `zarr_conventions` array with the following metadata:
@@ -129,6 +146,13 @@ The convention is identified in the `zarr_conventions` array with the following 
 At minimum, one of `spec_url`, `schema_url`, or `uuid` must be present to identify the convention.
 
 **This declaration is what makes the convention visible.** A group that carries `stac:item` or `stac:collection` without a matching entry in `zarr_conventions` is not conformant, and a spec-compliant reader has no way to know the attribute is there or how to interpret it. If your producer already emits STAC-shaped metadata under a different, undeclared attribute name (for example `stac_discovery`), the fix is to declare it here — see [Scope of the Embedded STAC Object](#scope-of-the-embedded-stac-object) for what else has to be true before that metadata counts as conformant.
+
+## Applicable To
+
+This convention can be used with these parts of the Zarr hierarchy:
+
+- [x] Group
+- [ ] Array
 
 ## Scope of the Embedded STAC Object
 
@@ -335,5 +359,6 @@ Related specifications:
 - [Zarr v3 Specification](https://zarr-specs.readthedocs.io/en/latest/v3/)
 - [STAC Zarr Best Practices](https://github.com/radiantearth/stac-best-practices/blob/main/best-practices-zarr.md)
 - [Zarr Conventions Specification](https://github.com/zarr-conventions/zarr-conventions-spec)
+- [`ref` — Referencing external objects from a Zarr array or group](https://github.com/R-CF/zarr_convention_ref)
 - [STAC in Zarr — ESRIN Rome sprint notes, Oct 2025](https://github.com/radiantearth/community-sprints/blob/main/2025-10-14-esrin-rome-italy/sprint-notes/STAC%20in%20Zarr.md)
 - [Why Arrays as a universal data model](https://www.tiledb.com/blog/why-arrays-as-a-universal-data-model)
