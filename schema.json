@@ -87,14 +87,17 @@
         "zarr_conventions": true,
         "stac:encoding": {
           "type": "string",
-          "enum": ["attribute", "link"],
-          "description": "REQUIRED. Encoding type for STAC objects. 'attribute' embeds the object directly in attributes. 'link' points to the canonical STAC object at an external location via a STAC Link Object. The experimental 'array' encoding (see README) is not yet covered by this schema."
+          "enum": ["attribute", "key", "link"],
+          "description": "REQUIRED. Encoding type for STAC objects. 'attribute' embeds the object directly in attributes. 'key' references a separate JSON value within the Zarr store, by key. 'link' points to the canonical STAC object at an external location via a STAC Link Object. The experimental 'array' encoding (see README) is not yet covered by this schema."
         }
       },
       "required": ["stac:encoding"],
       "oneOf": [
         {
           "$ref": "#/$defs/jsonAttrsEncoding"
+        },
+        {
+          "$ref": "#/$defs/jsonKeyEncoding"
         },
         {
           "$ref": "#/$defs/linkEncoding"
@@ -148,6 +151,26 @@
           }
         }
       ]
+    },
+    "jsonKeyEncoding": {
+      "type": "object",
+      "description": "STAC object stored as a separate value in the Zarr store, referenced by a key. Design status open — see https://github.com/zarr-conventions/stac/issues/2 and https://github.com/zarr-conventions/stac/issues/4.",
+      "properties": {
+        "stac:encoding": {
+          "const": "key"
+        },
+        "stac:key": {
+          "type": "string",
+          "description": "REQUIRED for key encoding. The key (Unicode string) that references the STAC JSON object in the Zarr store, following the abstract store interface. Relative to the group containing this metadata."
+        }
+      },
+      "required": ["stac:key"],
+      "not": {
+        "anyOf": [
+          { "required": ["stac:item"] },
+          { "required": ["stac:collection"] }
+        ]
+      }
     },
     "linkEncoding": {
       "type": "object",
