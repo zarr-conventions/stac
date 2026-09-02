@@ -8,7 +8,7 @@
 - **Extension Maturity Classification**: Proposal
 - **Owner**: @emmanuelmathot
 
-This convention defines a standard way to attach [STAC](https://stacspec.org/) (SpatioTemporal Asset Catalog) metadata to a Zarr group. It defines four fields, each with one fixed shape and one job: embed a complete STAC Item or Collection directly in the group's attributes, reference a separate JSON value stored elsewhere in the same Zarr store, or point to the canonical STAC object at an external location. Which field is present tells a reader everything it needs to know — there is no separate mode or encoding flag to check first. Either way, the Zarr group carries enough information for a STAC-aware tool to discover, describe, and validate the data.
+This convention defines a standard way to attach [STAC](https://stacspec.org/) (SpatioTemporal Asset Catalog) metadata to a Zarr group. It defines four fields, each with one fixed shape and one job: embed a complete STAC Item or Collection directly in the group's attributes, reference a separate JSON value stored elsewhere in the same Zarr store, or point to the canonical STAC object at an external location. Which field is present tells a reader everything it needs to know and the Zarr group carries enough information for a STAC-aware tool to discover, describe, and validate the data.
 
 ## Table of Contents
 
@@ -161,7 +161,7 @@ The convention is identified in the `zarr_conventions` array with the following 
 
 At minimum, one of `spec_url`, `schema_url`, or `uuid` must be present to identify the convention.
 
-**This declaration is what makes the convention visible.** A group that carries `stac:item`, `stac:collection`, `stac:key`, or `stac:link` without a matching entry in `zarr_conventions` is not conformant, and a spec-compliant reader has no way to know the attribute is there or how to interpret it. If your producer already emits STAC-shaped metadata under a different, undeclared attribute name (for example `stac_discovery`), the fix is to declare it here — see [Scope of the Embedded STAC Object](#scope-of-the-embedded-stac-object) for what else has to be true before that metadata counts as conformant.
+**This declaration is what makes the convention visible.** A group that carries `stac:item`, `stac:collection`, `stac:key`, or `stac:link` without a matching entry in `zarr_conventions` is not conformant, and a spec-compliant reader has no way to know the attribute is there or how to interpret it.
 
 ## Applicable To
 
