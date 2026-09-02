@@ -1,0 +1,16 @@
+{
+  "zarr_format": 3,
+  "node_type": "group",
+  "attributes": {
+    "zarr_conventions": [
+      {
+        "schema_url": "https://raw.githubusercontent.com/zarr-conventions/stac/refs/tags/v0.1/schema.json",
+        "spec_url": "https://github.com/zarr-conventions/stac/blob/v0.1/README.md",
+        "uuid": "b3703368-7e7e-4e8e-9e0e-6d0f0d5e8e8e",
+        "name": "stac:",
+        "description": "STAC convention for embedding or referencing STAC objects in Zarr group metadata"
+      }
+    ],
+    "stac:key": "stac.json"
+  }
+}

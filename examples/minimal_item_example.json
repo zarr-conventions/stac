@@ -5,10 +5,9 @@
     "zarr_conventions": [
       {
         "name": "stac:",
-        "spec_url": "https://github.com/zarr-conventions/stac/blob/v1/README.md"
+        "spec_url": "https://github.com/zarr-conventions/stac/blob/v0.1/README.md"
       }
     ],
-    "stac:encoding": "attribute",
     "stac:item": {
       "type": "Feature",
       "stac_version": "1.1.0",

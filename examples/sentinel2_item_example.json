@@ -4,14 +4,13 @@
   "attributes": {
     "zarr_conventions": [
       {
-        "schema_url": "https://raw.githubusercontent.com/zarr-conventions/stac/refs/tags/v1/schema.json",
-        "spec_url": "https://github.com/zarr-conventions/stac/blob/v1/README.md",
+        "schema_url": "https://raw.githubusercontent.com/zarr-conventions/stac/refs/tags/v0.1/schema.json",
+        "spec_url": "https://github.com/zarr-conventions/stac/blob/v0.1/README.md",
         "uuid": "b3703368-7e7e-4e8e-9e0e-6d0f0d5e8e8e",
         "name": "stac:",
-        "description": "STAC convention for embedding STAC objects in Zarr group metadata"
+        "description": "STAC convention for embedding or referencing STAC objects in Zarr group metadata"
       }
     ],
-    "stac:encoding": "attribute",
     "stac:item": {
       "id": "S2C_MSIL2A_20251128T101401_N0511_R022_T32TQQ_20251128T140816",
       "bbox": [11.499848789004083, 44.099770918209835, 12.936097556086393, 45.12552488296481],
@@ -52,7 +51,7 @@
         "AOT_10m": {
           "gsd": 10,
           "href": "quality/atmosphere/r10m/aot",
-          "type": "application/vnd+zarr",
+          "type": "application/vnd.zarr; version=3",
           "roles": ["data"],
           "title": "Aerosol optical thickness (AOT)",
           "nodata": 0,
@@ -64,7 +63,7 @@
         "SCL_20m": {
           "gsd": 20,
           "href": "conditions/mask/l2a_classification/r20m/scl",
-          "type": "application/vnd+zarr",
+          "type": "application/vnd.zarr; version=3",
           "roles": ["data"],
           "title": "Scene classification map (SCL)",
           "nodata": 0,
@@ -76,7 +75,7 @@
         "WVP_10m": {
           "gsd": 10,
           "href": "quality/atmosphere/r10m/wvp",
-          "type": "application/vnd+zarr",
+          "type": "application/vnd.zarr; version=3",
           "roles": ["data"],
           "title": "Water vapour (WVP)",
           "nodata": 0,
@@ -88,7 +87,7 @@
         "reflectance": {
           "gsd": 10,
           "href": "measurements/reflectance",
-          "type": "application/vnd.zarr; version=2; profile=multiscales",
+          "type": "application/vnd.zarr; version=3; profile=multiscales",
           "bands": [
             {
               "gsd": 20,
